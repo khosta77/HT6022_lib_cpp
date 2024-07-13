@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <map>
+#include <fstream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
@@ -2882,6 +2883,8 @@ int HT6022_SetCH2IR( HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR ) {
 }
 #endif
 
+
+
 class Oscilloscope {
 private:
 	HT6022_DeviceTypeDef Device;
@@ -2895,7 +2898,9 @@ private:
 	    libusb_exit(nullptr);
     }
 
-    /* @brief firmwareUpload - загрузка встроенного ПО
+    /* @brief firmwareUpload - загрузка встроенного ПО. Это надо только при первом запуске осцилографа, есть
+     *                         нюанс. Если без прерывания это делать, будет не определение устройства. Надо
+     *                         использовать задержку
      * */
     int firmwareUpload() {
         libusb_device_handle *Dev_handle;
@@ -2955,8 +2960,8 @@ private:
 	    int r; 
 	    unsigned char Address;
 	
-	    if( Device.DeviceHandle == nullptr )
-		    return HT6022_ERROR_INVALID_PARAM;
+	    //if( Device.DeviceHandle == nullptr )
+		//    return HT6022_ERROR_INVALID_PARAM;
 
 	    Device.Address = 0;
 	    Device.DeviceHandle = nullptr;
@@ -3121,14 +3126,11 @@ private:
 #endif
 public:
     Oscilloscope() {
-        init();
-        firmwareUpload();
+        std::cout << init() << std::endl;
+        std::cout << firmwareUpload() << std::endl;
         //std::cout << "X";
-        //std::this_thread::sleep_for(std::chrono::nanoseconds(50'000'000'000));
+        std::this_thread::sleep_for(std::chrono::nanoseconds(50'000'000'000));
         //std::cout << "X" << std::endl;
-        openDevice();
-        //std::cout << HT6022_Init() << std::endl;
-        //std::cout << HT6022_FirmwareUpload() << std::endl;
 #if 0
         char c;
     	do
@@ -3137,13 +3139,17 @@ public:
 		    scanf ("%c", &c);
 	    } while (c != '\n');
 #endif
+
+        std::cout << openDevice() << std::endl;
+        //std::cout << HT6022_Init() << std::endl;
+        //std::cout << HT6022_FirmwareUpload() << std::endl;
         //std::cout << HT6022_DeviceOpen(&Device) << std::endl;
         //std::cout << "XXX" << std::endl;
-        setSampleRate(HT6022_100KSa);
+        std::cout << setSampleRate(HT6022_100KSa) << std::endl;
         //std::cout << HT6022_SetSR(&Device, HT6022_100KSa) << std::endl;  /* 100KSa per channel. */
         //std::cout << "XXX" << std::endl;
-        setCH1InputRate(HT6022_1V);
-        setCH2InputRate(HT6022_1V);
+        std::cout << setCH1InputRate(HT6022_1V) << std::endl;
+        std::cout << setCH2InputRate(HT6022_1V) << std::endl;
         //std::cout << HT6022_SetCH1IR(&Device, HT6022_1V) << std::endl;   /* Channel 1 input range. */
         //std::cout << "XXX" << std::endl;
         //std::cout << HT6022_SetCH2IR(&Device, HT6022_1V) << std::endl;   /* Channel 2 input range. */
@@ -3178,11 +3184,11 @@ public:
 	    return HT6022_SUCCESS;
     }
 
-    void setCH1InputRate( HT6022_IRTypeDef IR ) {
+    int setCH1InputRate( HT6022_IRTypeDef IR ) {
         int r;
         unsigned char InputRange = IR;
         if ((!IS_HT6022_IR (IR)) || (Device.DeviceHandle == nullptr))
-            return;// HT6022_ERROR_INVALID_PARAM;	
+            return HT6022_ERROR_INVALID_PARAM;	
 	    r = libusb_control_transfer(Device.DeviceHandle, 
 				                    HT6022_IR1_REQUEST_TYPE, 
 					                HT6022_IR1_REQUEST, 
@@ -3193,17 +3199,17 @@ public:
 	    if (r != HT6022_IR1_SIZE) {
             if (r != HT6022_ERROR_NO_DEVICE)
 	    	    r = HT6022_ERROR_OTHER;
-	        return;// r;
+	        return r;
 	    }
 
-	    return;// HT6022_SUCCESS;
+	    return HT6022_SUCCESS;
     }
 
-    void setCH2InputRate( HT6022_IRTypeDef IR) {
+    int setCH2InputRate( HT6022_IRTypeDef IR) {
         int r;
         unsigned char InputRange = IR;
         if ((!IS_HT6022_IR (IR)) || (Device.DeviceHandle == nullptr))
-            return;// HT6022_ERROR_INVALID_PARAM;	
+            return HT6022_ERROR_INVALID_PARAM;	
 	    r = libusb_control_transfer(Device.DeviceHandle,
                                     HT6022_IR2_REQUEST_TYPE,
                                     HT6022_IR2_REQUEST, 
@@ -3214,11 +3220,10 @@ public:
         if(r != HT6022_IR2_SIZE) {
             if (r != HT6022_ERROR_NO_DEVICE)
 	    	    r = HT6022_ERROR_OTHER;
-            return;
-            //return r;
+            return r;
         }
 
-        return;// HT6022_SUCCESS; 
+        return HT6022_SUCCESS; 
     }
 #endif
     std::vector<int> readFrame() {
@@ -3240,8 +3245,10 @@ public:
 int main () {
     Oscilloscope osc;
     auto signal = osc.readFrame();
+    std::ofstream out("test.txt"); 
     for( auto it : signal )
-        std::cout << ((int)it) << ' ';
+        out << ((int)it) << ' ';
+    out.close();
 	return 0;
 }
 
