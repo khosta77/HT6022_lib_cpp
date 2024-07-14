@@ -1,4 +1,5 @@
 #include <iostream>
+#include<algorithm>
 #include <vector>
 #include <map>
 #include <fstream>
@@ -7,6 +8,8 @@
 #include <math.h>
 #include <thread>
 #include <chrono>
+#include <exception>
+#include <string>
 #include <libusb-1.0/libusb.h>
 
 /* Private define ------------------------------------------------------------*/ 
@@ -2318,14 +2321,11 @@ unsigned char HT6022_Firmware [] =
 /** 
   * @brief Device Handle
   */
-typedef struct  {
-	libusb_device_handle *DeviceHandle;
-	unsigned char Address;
-} HT6022_DeviceTypeDef;
                                                                
 /** 
   * @brief Error Code  
   */   
+
 typedef enum { 
      HT6022_SUCCESS  = 0,
      HT6022_ERROR_INVALID_PARAM = -2,
@@ -2335,17 +2335,60 @@ typedef enum {
      HT6022_ERROR_NO_MEM        = -11, 
      HT6022_ERROR_OTHER         = -99
 } HT6022_ErrorTypeDef;
-#define  IS_HT6022_ERROR(ERROR) (((ERROR) == HT6022_SUCCESS) || \
-				 ((ERROR) == HT6022_ERROR_INVALID_PARAM) || \
-				 ((ERROR) == HT6022_ERROR_ACCESS )   || \
-				 ((ERROR) == HT6022_ERROR_NO_DEVICE) || \
-				 ((ERROR) == HT6022_ERROR_TIMEOUT)   || \
-				 ((ERROR) == HT6022_ERROR_NO_MEM)    || \
-                 ((ERROR) == HT6022_ERROR_OTHER))
+#define IS_HT6022_ERROR(ERROR) (((ERROR) == HT6022_SUCCESS) || \
+				                ((ERROR) == HT6022_ERROR_INVALID_PARAM) || \
+				                ((ERROR) == HT6022_ERROR_ACCESS )   || \
+				                ((ERROR) == HT6022_ERROR_NO_DEVICE) || \
+				                ((ERROR) == HT6022_ERROR_TIMEOUT)   || \
+				                ((ERROR) == HT6022_ERROR_NO_MEM)    || \
+                                ((ERROR) == HT6022_ERROR_OTHER))
  
-/** 
-  * @brief  Size of data bufffer
-  */   
+/** @brief Ошибка матрицы, с выводом сообщения
+ * */
+class OscilloscopeException : public std::exception {
+public:
+    explicit OscilloscopeException( const std::string &msg ) : m_msg(msg) {}
+    const char *what() const noexcept override {
+		return m_msg.c_str();
+	}
+
+private:
+    std::string m_msg;
+};
+
+class InvalidParamOscilloscope : public OscilloscopeException {
+public:
+    InvalidParamOscilloscope( const std::string &methodName, const std::string &paramName) :
+        OscilloscopeException(( "В методе " + methodName + " проблема с параметром " + paramName )) {}
+};
+
+class AccessOscilloscopeException : public OscilloscopeException {
+public:
+    AccessOscilloscopeException( const std::string &methodName ) : OscilloscopeException(( "В методе " + 
+                methodName + " проблема с доступом" )) {}
+};
+
+class NoDeviceOscilloscope : public OscilloscopeException {
+public:
+    NoDeviceOscilloscope( const std::string &methodName ) : OscilloscopeException(( "В методе " + methodName
+                + " не обнаружено устройство" )) {}
+};
+
+class TimeOut : public OscilloscopeException {
+public:
+    TimeOut( const std::string &methodName ) : OscilloscopeException(( "В методе " + methodName
+            + " timeout" )) {}
+};
+
+class MemoryException : public OscilloscopeException {
+public:
+    MemoryException( const std::string &methodName, const std::string &paramName ) :
+        OscilloscopeException(( "В методе " + methodName + " под параметр " + paramName + " нет памяти")) {}
+
+};
+
+/** @brief Размер буфера
+ */   
 typedef enum { 
   HT6022_1KB   = 0x00000400, /*!< 1024 Bytes */
   HT6022_2KB   = 0x00000800, /*!< 2048 Bytes */
@@ -2371,8 +2414,7 @@ typedef enum {
                                    ((SIZE) == HT6022_512KB)||\
                                    ((SIZE) == HT6022_1MB))
 
-/** 
-  * @brief Size of calibration values buffer 
+/** @brief Size of calibration values buffer 
   */   
 typedef enum { 
   HT6022_32B   = 0x00000010, /*!< 32 Bytes */
@@ -2383,8 +2425,7 @@ typedef enum {
                                  ((SIZE) == HT6022_64B)  ||\
                                  ((SIZE) == HT6022_128B))
 
-/** 
-  * @brief  Sample rate 
+/** @brief  Sample rate 
   */   
 typedef enum { 
   	HT6022_24MSa  = 0x30, /*!< 24MSa per channel */
@@ -2405,8 +2446,7 @@ typedef enum {
                           ((SR) == HT6022_200KSa) ||\
                           ((SR) == HT6022_100KSa))
 
-/** 
-  * @brief Input range 
+/** @brief Input range 
   */   
 typedef enum { 
   	HT6022_10V   = 0x01, /*!< -5V    to 5V    */
@@ -2419,48 +2459,6 @@ typedef enum {
                              ((IR) == HT6022_2V)  ||\
                              ((IR) == HT6022_1V))
 
-
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-
-
-/* Exported functions --------------------------------------------------------*/ 
-
-/* Initialization and Configuration functions *********************************/
-#if 0
-int	HT6022_Init(void);
-void HT6022_Exit(void);
-int	HT6022_DeviceOpen(HT6022_DeviceTypeDef *Device);
-void HT6022_DeviceClose(HT6022_DeviceTypeDef *Device);
-int HT6022_FirmwareUpload(void); 
-
-/* Read functions ********************************************************/
-
-int	HT6022_ReadData(HT6022_DeviceTypeDef *Device, unsigned char* CH1, unsigned char* CH2,
-                    HT6022_DataSizeTypeDef DataSize, unsigned int  Timeout);
-
-/* Read and Write calibration values functions *********************************/
-
-int	HT6022_SetCalValues(HT6022_DeviceTypeDef *Device, unsigned char* CalValues,
-                        HT6022_CVSizeTypeDef CVSize); 
-int	HT6022_GetCalValues(HT6022_DeviceTypeDef *Device, unsigned char* CalValues,   
-					    HT6022_CVSizeTypeDef CVSize); 
-
-/* Sample rate and input range configuration functions *******************************/
-
-int	HT6022_SetSR(HT6022_DeviceTypeDef *Device, HT6022_SRTypeDef SR);
-int HT6022_SetCH1IR (HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR);
-int HT6022_SetCH2IR (HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR);
-#endif
-/**
-  * @}
-  */ 
-
-/** @addtogroup HT6022_Driver
-  * @{
-  */ 
-
-/* Private define ------------------------------------------------------------*/
 #define HT6022_VENDOR_ID                  0x4B5
 #define HT6022_MODEL                      0x6022
 #define HT6022_IR1_REQUEST_TYPE           0x40
@@ -2494,410 +2492,42 @@ int HT6022_SetCH2IR (HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR);
 #define HT6022_READ_CONTROL_DATA          0x01
 #define HT6022_READ_BULK_PIPE             0x86
 
-
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
 unsigned char HT6022_AddressList [256] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
-	
-	
-
-
-/* Private function prototypes -----------------------------------------------*/
-
-/* Private functions ---------------------------------------------------------*/
-
-/* Public functions ---------------------------------------------------------*/
-
-/** @defgroup HT6022_Driver_Group1  Initialization and Configuration
- *  @brief    Initialization and Configuration
- *
-@verbatim   
-
- ===============================================================================
-                          Initialization and Configuration
- =============================================================================== 
- 
-
-@endverbatim
-  * @{
-  */
-#if 0
-int HT6022_Init(void) {
-    return ( ( libusb_init(NULL) == 0 ) ? HT6022_SUCCESS : HT6022_ERROR_OTHER );
-}
-
-void HT6022_Exit(void) {
-	libusb_exit(NULL);
-}
-
-int HT6022_FirmwareUpload(void) {
-    libusb_device_handle  *Dev_handle;
-	unsigned char* Firmware;
-	unsigned int Size;
-	unsigned int Value;
-	int n;
-	Dev_handle = libusb_open_device_with_vid_pid(NULL, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL);
-	if (Dev_handle == 0)
- 		return HT6022_ERROR_NO_DEVICE;
-	
-	if(libusb_kernel_driver_active(Dev_handle, 0) == 1) {
-	    if(libusb_detach_kernel_driver(Dev_handle, 0) != 0) {
-		    libusb_close(Dev_handle);
-		    return HT6022_ERROR_OTHER;
-		}
-    }
-
-	if(libusb_claim_interface(Dev_handle, 0) < 0) {
-		libusb_close(Dev_handle);
-		return HT6022_ERROR_OTHER;
-	}
-
-	n = HT6022_FIRMWARE_SIZE;
-	Firmware = HT6022_Firmware;
-	while (n) {	
-		Size  = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
-		Firmware += 2;
-		Value = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
-		Firmware += 2;
-		
-        if (libusb_control_transfer (Dev_handle,     
-                                     HT6022_FIRMWARE_REQUEST_TYPE,               
-                                     HT6022_FIRMWARE_REQUEST, 
-					                 Value,           
-                                     HT6022_FIRMWARE_INDEX, 
-                                     Firmware, Size, 0) != Size) {
-			libusb_release_interface(Dev_handle, 0);
-			libusb_close(Dev_handle);
-			return HT6022_ERROR_OTHER;
-		}
-		Firmware += Size;
-		--n;
-	}
-
-	libusb_release_interface(Dev_handle, 0);
-	libusb_close(Dev_handle);
-	return HT6022_SUCCESS;
-}
-
-int HT6022_DeviceOpen (HT6022_DeviceTypeDef *Device) {
-	struct libusb_device_descriptor desc;
-	libusb_device         **DeviceList;
-    libusb_device_handle  *DeviceHandle;
-	int DeviceCount;
-	int DeviceIterator;
-	int r; 
-	unsigned char Address;
-    std::cout << ".0" << std::endl;
-	if (Device == NULL)
-        return HT6022_ERROR_INVALID_PARAM;
-
-	Device->Address = 0;
-	Device->DeviceHandle = nullptr;
-    
-    std::cout << ".1" << std::endl;
-	// Get device list 
-	DeviceCount = libusb_get_device_list(NULL, &DeviceList);
-	if (DeviceCount <= 0) 
-		return HT6022_ERROR_OTHER;
-    std::cout << ".2" << std::endl;
-	for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)  {
-	    Address = libusb_get_device_address (DeviceList[DeviceIterator]);
-	    if (HT6022_AddressList[Address] == 0)
-	    	// Get device descriptor
-	    	if (libusb_get_device_descriptor(DeviceList[DeviceIterator], &desc) == 0)
-	    		// Check VID and PID    
-	    		if ((desc.idVendor  == HT6022_VENDOR_ID)&&(desc.idProduct == HT6022_MODEL))
-	    			break;
-	}
-    std::cout << ".3" << std::endl;
-	if (DeviceIterator == DeviceCount) {
-		libusb_free_device_list(DeviceList, 1);
-		return HT6022_ERROR_NO_DEVICE;
-	}
-    std::cout << ".4" << std::endl;
-	r = libusb_open(DeviceList[DeviceIterator], &DeviceHandle);
-	libusb_free_device_list(DeviceList, 1);
-	if( r != 0 ) {
-		if (r != HT6022_ERROR_NO_MEM && r != HT6022_ERROR_ACCESS)
-			r = HT6022_ERROR_OTHER;
-		return r;
-	}
-    std::cout << ".5" << std::endl;
-	if(libusb_kernel_driver_active(DeviceHandle, 0) == 1)
-		if(libusb_detach_kernel_driver(DeviceHandle, 0) != 0) {
-			libusb_close(DeviceHandle);
-			return HT6022_ERROR_OTHER;
-		}
-    std::cout << ".6" << std::endl;
-	if(libusb_claim_interface(DeviceHandle, 0) != 0) {
-		libusb_close(DeviceHandle);
-		return HT6022_ERROR_OTHER;
-	}
-    std::cout << ".7" << std::endl;
-	HT6022_AddressList[Address] = 0x01;	
-	Device->Address = Address;
-	Device->DeviceHandle = DeviceHandle;
-	return HT6022_SUCCESS;
-}
-
-void HT6022_DeviceClose(HT6022_DeviceTypeDef *Device) {
-    if( Device != NULL ) {
-		libusb_release_interface(Device->DeviceHandle, 0);
-		libusb_close(Device->DeviceHandle);
-		HT6022_AddressList[Device->Address] = 0x00;
-		Device->DeviceHandle = NULL;
-		Device->Address = 0;
-	}
-}
-
-/**
-  * @}
-  */ 
-
-/** @defgroup HT6022_Driver_Group2  Data read functions
- *  @brief    Data read functions
- *
-@verbatim   
- ===============================================================================
-                                Data read functions
- ===============================================================================  
-@endverbatim
-  * @{
-  */
-
-int HT6022_ReadData(HT6022_DeviceTypeDef *Device, unsigned char* CH1, unsigned char* CH2,
-                    HT6022_DataSizeTypeDef DataSize, unsigned int  TimeOut) {
-	unsigned char *data;
-    unsigned char *data_temp;
-    int nread;
-  	int r;
-	   
-	data = (unsigned char*) malloc (sizeof(unsigned char)*DataSize*2);
-	if (data == 0)
-	    return HT6022_ERROR_NO_MEM;
-
-  	if ((!IS_HT6022_DATASIZE (DataSize)) || (Device == NULL) ||  (CH1 == NULL) ||  (CH2 == NULL)) {
-  	    free(data);
-	    return HT6022_ERROR_INVALID_PARAM;
-  	}
-  	   
-	*data = HT6022_READ_CONTROL_DATA;
-	r = libusb_control_transfer(Device->DeviceHandle, 
-				                HT6022_READ_CONTROL_REQUEST_TYPE, 
-					            HT6022_READ_CONTROL_REQUEST, 
-					            HT6022_READ_CONTROL_VALUE, 
-					            HT6022_READ_CONTROL_INDEX, 
-					            data,
-					            HT6022_READ_CONTROL_SIZE, 0);
-
-	if (r != HT6022_READ_CONTROL_SIZE) {
-	    if (r != HT6022_ERROR_NO_DEVICE)
-		    r = HT6022_ERROR_OTHER;
-	    free(data);
-	    return r;
-    }
-	
-	r = libusb_bulk_transfer(Device->DeviceHandle,
-			                 HT6022_READ_BULK_PIPE, 
-				             data, 
-				             DataSize*2, 
-				             &nread, 
-				             TimeOut); 
-
-	if (r != HT6022_SUCCESS || nread != DataSize*2) {
-	    if (r != HT6022_ERROR_NO_DEVICE && r != HT6022_ERROR_TIMEOUT)
-		    r = HT6022_ERROR_OTHER;
-	    free(data);
-	    return r;
-	} 
-	  
-	data_temp = data;
-	while (nread) {
-        *CH1++ = *data_temp++;
-	    *CH2++ = *data_temp++;
-	    nread -= 2;
-	}
-	  
-	free (data);
-	return HT6022_SUCCESS;
-}
-
-/**
-  * @}
-  */
-
-/** @defgroup HT6022_Driver_Group3  Read and Write calibration levels functions
- *  @brief   Read and Write calibration levels functions
- *
-@verbatim   
- ===========================================================================================================
-                      Read and Write calibration value functions
- ===========================================================================================================
-@endverbatim
-  * @{
-  */
-
-int HT6022_SetCalValues(HT6022_DeviceTypeDef *Device, unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize) {
-   	int r;
-    if ((!IS_HT6022_CVSIZE (CVSize)) || (Device == NULL) ||  (CalValues == NULL))
-	    return HT6022_ERROR_INVALID_PARAM;	
-	r = libusb_control_transfer(Device->DeviceHandle, 
-				                HT6022_SETCALLEVEL_REQUEST_TYPE, 
-					            HT6022_SETCALLEVEL_REQUEST, 
-					            HT6022_SETCALLEVEL_VALUE, 
-					            HT6022_SETCALLEVEL_INDEX, 
-					            CalValues,
-					            CVSize, 0);
-	if (r != CVSize) {
-	    if (r != HT6022_ERROR_NO_DEVICE)
-		    r =  HT6022_ERROR_OTHER;
-	    return r;
-	}
-	
-    return HT6022_SUCCESS; 
-}
-
-int HT6022_GetCalValues(HT6022_DeviceTypeDef *Device, unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize) {
-   	int r;
-	if ((!IS_HT6022_CVSIZE (CVSize)) || (Device == NULL) ||  (CalValues == NULL)) 
-	    return HT6022_ERROR_INVALID_PARAM;	
-	r = libusb_control_transfer(Device->DeviceHandle, 
-				                HT6022_GETCALLEVEL_REQUEST_TYPE, 
-					            HT6022_GETCALLEVEL_REQUEST, 
-					            HT6022_GETCALLEVEL_VALUE, 
-					            HT6022_GETCALLEVEL_INDEX, 
-					            CalValues,
-					            CVSize, 0);
-	if (r != CVSize) {
-	    if (r != HT6022_ERROR_NO_DEVICE)
-		    r = HT6022_ERROR_OTHER;
-	    return r;
-	}
-
-	return HT6022_SUCCESS; 
-}
-
-/**
-  * @}
-  */
-
-/** @defgroup HT6022_Driver_Group4  Sample rate and input voltage range functions
- *  @brief   Sample rate and input voltage range configuration
- *
-@verbatim   
- ===============================================================================
-                 Sample rate and input voltage range configuration
- ===============================================================================  
-@endverbatim
-  * @{
-  */
-
-int HT6022_SetSR( HT6022_DeviceTypeDef *Device, HT6022_SRTypeDef SR ) {
-    int r;
-    unsigned char SampleRate = SR;
-	if ((!IS_HT6022_SR (SR)) || (Device == NULL))
-        return HT6022_ERROR_INVALID_PARAM;
-
-	r = libusb_control_transfer(Device->DeviceHandle, 
-				                HT6022_SR_REQUEST_TYPE, 
-					            HT6022_SR_REQUEST, 
-					            HT6022_SR_VALUE, 
-					            HT6022_SR_INDEX, 
-					            &SampleRate,
-					            HT6022_SR_SIZE, 0);
-	if (r != HT6022_SR_SIZE) {
-	    if (r != HT6022_ERROR_NO_DEVICE)
-	        r = HT6022_ERROR_OTHER;
-	    return r;
-	}
-
-	return HT6022_SUCCESS;
-}
-
-int HT6022_SetCH1IR( HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR ) {
-    int r;
-    unsigned char InputRange = IR;
-    if ((!IS_HT6022_IR (IR)) || (Device == NULL))
-        return HT6022_ERROR_INVALID_PARAM;	
-	r = libusb_control_transfer(Device->DeviceHandle, 
-				                HT6022_IR1_REQUEST_TYPE, 
-					            HT6022_IR1_REQUEST, 
-					            HT6022_IR1_VALUE, 
-					            HT6022_IR1_INDEX, 
-					            &InputRange, 
-				                HT6022_IR1_SIZE, 0);
-	if (r != HT6022_IR1_SIZE) {
-        if (r != HT6022_ERROR_NO_DEVICE)
-	    	r = HT6022_ERROR_OTHER;
-	    return r;
-	}
-
-	return HT6022_SUCCESS;
-}
-
-int HT6022_SetCH2IR( HT6022_DeviceTypeDef *Device, HT6022_IRTypeDef IR ) {
-    int r;
-    unsigned char InputRange = IR;
-    if ((!IS_HT6022_IR (IR)) || (Device == NULL))
-        return HT6022_ERROR_INVALID_PARAM;	
-	r = libusb_control_transfer(Device->DeviceHandle,
-                                HT6022_IR2_REQUEST_TYPE,
-                                HT6022_IR2_REQUEST, 
-	                            HT6022_IR2_VALUE, 
-					            HT6022_IR2_INDEX, 
-					            &InputRange,
-				                HT6022_IR2_SIZE, 0);
-    if(r != HT6022_IR2_SIZE) {
-        if (r != HT6022_ERROR_NO_DEVICE)
-	    	r = HT6022_ERROR_OTHER;
-	    return r;
-    }
-
-    return HT6022_SUCCESS; 
-}
-#endif
-
-
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00 };	
 
 class Oscilloscope {
 private:
+    struct HT6022_DeviceTypeDef {
+	    libusb_device_handle *DeviceHandle;
+	    uint8_t Address;
+
+        HT6022_DeviceTypeDef() : DeviceHandle(nullptr), Address(0x00) {}
+    };
+
 	HT6022_DeviceTypeDef Device;
-#if 1
-    int init() {
-        return ( ( libusb_init(nullptr) == 0 ) ? HT6022_SUCCESS : HT6022_ERROR_OTHER );
-    }
 
-    void close() {
-        closeDevice();
-	    libusb_exit(nullptr);
+    /** @brief init_usb - Инициализация usb
+     * */
+    void init_usb() {
+        if( libusb_init(nullptr) != 0 )
+            throw OscilloscopeException("В методе init_usb произошло что-то неизвестное!!!");
     }
-
+ 
     /* @brief firmwareUpload - загрузка встроенного ПО. Это надо только при первом запуске осцилографа, есть
      *                         нюанс. Если без прерывания это делать, будет не определение устройства. Надо
      *                         использовать задержку
@@ -2908,20 +2538,21 @@ private:
 	    unsigned int Size;
 	    unsigned int Value;
 	    int n;
-	    Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
-	    if (Dev_handle == 0)
- 		    return HT6022_ERROR_NO_DEVICE;
-	
+	    
+        Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
+	    if( Dev_handle == 0 )
+            return -1;
+
 	    if( libusb_kernel_driver_active( Dev_handle, 0 ) == 1 ) {
 	        if( libusb_detach_kernel_driver( Dev_handle, 0 ) != 0 ) {
 		        libusb_close(Dev_handle);
-		        return HT6022_ERROR_OTHER;
+                throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
 		    }
         }
 
 	    if( libusb_claim_interface( Dev_handle, 0 ) < 0 ) {
 		    libusb_close(Dev_handle);
-		    return HT6022_ERROR_OTHER;
+            throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
 	    }
 
 	    n = HT6022_FIRMWARE_SIZE;
@@ -2932,88 +2563,83 @@ private:
 		    Value = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
 		    Firmware += 2;
 		
-            if (libusb_control_transfer(Dev_handle,     
-                                        HT6022_FIRMWARE_REQUEST_TYPE,               
-                                        HT6022_FIRMWARE_REQUEST, 
-					                    Value,           
-                                        HT6022_FIRMWARE_INDEX, 
-                                        Firmware, Size, 0) != Size) {
-			    libusb_release_interface(Dev_handle, 0);
+            if( libusb_control_transfer( Dev_handle,     
+                                         HT6022_FIRMWARE_REQUEST_TYPE,               
+                                         HT6022_FIRMWARE_REQUEST, 
+					                     Value,           
+                                         HT6022_FIRMWARE_INDEX, 
+                                         Firmware, Size, 0 ) != Size ) {
+			    libusb_release_interface( Dev_handle, 0 );
 			    libusb_close(Dev_handle);
-			    return HT6022_ERROR_OTHER;
+                throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
 		    }
 		    Firmware += Size;
 		    --n;
 	    }
 
-	    libusb_release_interface(Dev_handle, 0);
+	    libusb_release_interface( Dev_handle, 0 );
 	    libusb_close(Dev_handle);
-	    return HT6022_SUCCESS;
+	    return 0;
     }
 
-    int openDevice() {
+    /** @brief openDevice - Открыть девайс и взять его данные
+     * */
+    void openDevice() {
 	    struct libusb_device_descriptor desc;
-	    libusb_device         **DeviceList;
-        libusb_device_handle  *DeviceHandle;
+	    libusb_device **DeviceList;
+        libusb_device_handle *DeviceHandle;
 	    int DeviceCount;
 	    int DeviceIterator;
-	    int r; 
-	    unsigned char Address;
+	    uint8_t Address;
 	
-	    //if( Device.DeviceHandle == nullptr )
-		//    return HT6022_ERROR_INVALID_PARAM;
-
-	    Device.Address = 0;
-	    Device.DeviceHandle = nullptr;
-	
-	    /* Get device list */
 	    DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
 	    if (DeviceCount <= 0) 
-		    return HT6022_ERROR_OTHER;
+		    throw OscilloscopeException("Метод openDevice, подключенные девайсы отстутствуют.");
 
 	    for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)  {
 	        Address = libusb_get_device_address (DeviceList[DeviceIterator]);
-	        if (HT6022_AddressList[Address] == 0)
-	    	    /* Get device descriptor*/
-	    	    if (libusb_get_device_descriptor(DeviceList[DeviceIterator], &desc) == 0)
-	    		    /* Check VID and PID*/    
-	    		    if ((desc.idVendor  == HT6022_VENDOR_ID)&&(desc.idProduct == HT6022_MODEL))
+	        if( HT6022_AddressList[Address] == 0 )
+	    	    if( libusb_get_device_descriptor( DeviceList[DeviceIterator], &desc ) == 0 )  // VID и PID 
+	    		    if( ( desc.idVendor  == HT6022_VENDOR_ID ) && ( desc.idProduct == HT6022_MODEL ) )
 	    			    break;
 	    }
 
-	    if (DeviceIterator == DeviceCount) {
-		    libusb_free_device_list(DeviceList, 1);
-		    return HT6022_ERROR_NO_DEVICE;
+	    if( DeviceIterator == DeviceCount ) {
+		    libusb_free_device_list( DeviceList, 1 );
+            throw NoDeviceOscilloscope("openDevice");
 	    }
 
-	    r = libusb_open(DeviceList[DeviceIterator], &DeviceHandle);
+	    int r = libusb_open(DeviceList[DeviceIterator], &DeviceHandle);
 	    libusb_free_device_list(DeviceList, 1);
 	    if( r != 0 ) {
-		    if (r != HT6022_ERROR_NO_MEM && r != HT6022_ERROR_ACCESS)
-			    r = HT6022_ERROR_OTHER;
-		    return r;
+            if( r == HT6022_ERROR_NO_MEM )
+                throw MemoryException( "openDevice", "-");
+            if( r == HT6022_ERROR_ACCESS )
+                throw AccessOscilloscopeException("openDevice");
+            throw OscilloscopeException("В методе openDevice произошло что-то неизвестное!!!");
 	    }
 		
 	    if(libusb_kernel_driver_active(DeviceHandle, 0) == 1)
 		    if(libusb_detach_kernel_driver(DeviceHandle, 0) != 0) {
 			    libusb_close(DeviceHandle);
-			    return HT6022_ERROR_OTHER;
+	            throw OscilloscopeException("В методе openDevice, функция libusb_detach_kernel_driver вернула не 0");
 		    }
 						
 	    if(libusb_claim_interface(DeviceHandle, 0) != 0) {
 		    libusb_close(DeviceHandle);
-		    return HT6022_ERROR_OTHER;
+		    throw OscilloscopeException("В методе openDevice, функция libusb_claim_interface вернула не 0");
 	    }
 	
 	    HT6022_AddressList[Address] = 0x01;	
 	    Device.Address = Address;
 	    Device.DeviceHandle = DeviceHandle;
-	    return HT6022_SUCCESS;    
     }
 
+    /** @brief closeDevice - закрыть устройство
+     * */
     void closeDevice() {
         if( Device.DeviceHandle != nullptr ) {
-		    libusb_release_interface(Device.DeviceHandle, 0);
+		    libusb_release_interface( Device.DeviceHandle, 0 );
 		    libusb_close(Device.DeviceHandle);
 		    HT6022_AddressList[Device.Address] = 0x00;
 		    Device.DeviceHandle = nullptr;
@@ -3021,230 +2647,234 @@ private:
 	    }
     }
 
-    //void setInputRate( const bool& ch, HT6022_IRTypeDef IR ) {
+    /** @brief setCH2InputRate - задать уровень для канал CH2
+     *  @param chn - номер канал:
+     *              * false CH1
+     *              * true  CH2
+     *  @param IR - значение уровня:
+     *              * HT6022_10V диапазон от -5V    до 5V    
+  	 *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+  	 *              * HT6022_2V  диапазон от -1V    до 1V    
+  	 *              * HT6022_1V  диапазон от -500mv до 500mv 
+     * */
+    void setInputRate( const bool& chn, HT6022_IRTypeDef IR ) {
+        if( (!IS_HT6022_IR(IR)) )
+            throw InvalidParamOscilloscope( "setInputRate", "IR" );
 
-    //}
+        if( Device.DeviceHandle == nullptr )
+            throw InvalidParamOscilloscope( "setInputRate", "Device.DeviceHandle" );
 
-    int readData( uint8_t* CH1, uint8_t* CH2, HT6022_DataSizeTypeDef DataSize, size_t  TimeOut ) {
-	    unsigned char *data;
-        unsigned char *data_temp;
-        int nread;
-  	    int r;
-	   
-	    data = (unsigned char*) malloc (sizeof(unsigned char)*DataSize*2);
-	    if (data == 0)
-	        return HT6022_ERROR_NO_MEM;
+        uint8_t InputRange = IR;
+	    int r = libusb_control_transfer( Device.DeviceHandle,
+                                         ( (chn) ? HT6022_IR1_REQUEST_TYPE : HT6022_IR2_REQUEST_TYPE ),
+                                         ( (chn) ? HT6022_IR1_REQUEST : HT6022_IR2_REQUEST ), 
+				                         ( (chn) ? HT6022_IR1_VALUE : HT6022_IR2_VALUE ),
+                                         ( (chn) ? HT6022_IR1_INDEX : HT6022_IR2_INDEX ),
+                                         &InputRange,
+                                         ( (chn) ? HT6022_IR1_SIZE : HT6022_IR2_SIZE ),
+                                         0 );
 
-  	    if ((!IS_HT6022_DATASIZE (DataSize)) || (Device.DeviceHandle == nullptr) ||  (CH1 == nullptr) ||  (CH2 == nullptr)) {
-  	        free(data);
-	        return HT6022_ERROR_INVALID_PARAM;
-  	    }
+        if( r == HT6022_ERROR_NO_DEVICE )
+            throw NoDeviceOscilloscope("setInputRate");
+
+        if( r != HT6022_SR_SIZE )
+	        throw OscilloscopeException("В методе setInputRate произошло что-то неизвестное!!!");
+    }
+
+    /** @brief readData - считать данные из каналов
+     * */
+    void readData( uint8_t* CH1, uint8_t* CH2, HT6022_DataSizeTypeDef DataSize, size_t  TimeOut ) {
+        if( (!IS_HT6022_DATASIZE(DataSize)) )
+            throw InvalidParamOscilloscope( "readData", "DataSize" );
+
+        if( Device.DeviceHandle == nullptr )
+            throw InvalidParamOscilloscope( "readData", "Device.DeviceHandle" );
+
+        if( CH1 == nullptr )
+            throw InvalidParamOscilloscope( "readData", "CH1" );
+
+        if( CH2 == nullptr )
+            throw InvalidParamOscilloscope( "readData", "CH2" );
+
+	    uint8_t *data = new uint8_t[( sizeof(uint8_t) * DataSize * 2 )];
+        if( data == nullptr )
+	        throw MemoryException( "readData", "data" );
   	   
 	    *data = HT6022_READ_CONTROL_DATA;
-	    r = libusb_control_transfer(Device.DeviceHandle, 
-		    		                HT6022_READ_CONTROL_REQUEST_TYPE, 
-			    		            HT6022_READ_CONTROL_REQUEST, 
-				    	            HT6022_READ_CONTROL_VALUE, 
-					                HT6022_READ_CONTROL_INDEX, 
-					                data,
-					                HT6022_READ_CONTROL_SIZE, 0);
+	    int r = libusb_control_transfer( Device.DeviceHandle, 
+		    		                     HT6022_READ_CONTROL_REQUEST_TYPE, 
+			    		                 HT6022_READ_CONTROL_REQUEST, 
+				    	                 HT6022_READ_CONTROL_VALUE, 
+					                     HT6022_READ_CONTROL_INDEX, 
+					                     data,
+					                     HT6022_READ_CONTROL_SIZE, 0 );
 
-	    if (r != HT6022_READ_CONTROL_SIZE) {
-	        if (r != HT6022_ERROR_NO_DEVICE)
-		        r = HT6022_ERROR_OTHER;
-	        free(data);
-	        return r;
+	    if( r != HT6022_READ_CONTROL_SIZE ) {
+	        delete []data;
+	        throw OscilloscopeException("В методе readData произошло что-то неизвестное!!!");
         }
-	
-	    r = libusb_bulk_transfer(Device.DeviceHandle,
-		    	                 HT6022_READ_BULK_PIPE, 
-			    	             data, 
-				                 DataSize*2, 
-				                 &nread, 
-				                 TimeOut); 
 
-	    if (r != HT6022_SUCCESS || nread != DataSize*2) {
-	        if (r != HT6022_ERROR_NO_DEVICE && r != HT6022_ERROR_TIMEOUT)
-		        r = HT6022_ERROR_OTHER;
-	        free(data);
-	        return r;
+        int nread;
+	    r = libusb_bulk_transfer( Device.DeviceHandle,
+		    	                  HT6022_READ_BULK_PIPE, 
+			    	              data, 
+				                  ( DataSize * 2 ), 
+				                  &nread, 
+				                  TimeOut ); 
+
+	    if( ( ( r != HT6022_SUCCESS ) || ( nread != ( DataSize * 2 ) ) ) ) {
+	        delete []data;
+            throw OscilloscopeException("В методе readData произошло что-то неизвестное!!!");
 	    } 
 	  
-	    data_temp = data;
-	    while (nread) {
+        uint8_t *data_temp = data;
+        while(nread) {
             *CH1++ = *data_temp++;
 	        *CH2++ = *data_temp++;
 	        nread -= 2;
 	    }
 	  
-	    free (data);
-	    return HT6022_SUCCESS;
+	    delete []data;
     }
  
+    /** @brief setCalValues - pass
+     * */
+    void setCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize ) {
+        if( !IS_HT6022_CVSIZE(CVSize) )
+            throw InvalidParamOscilloscope( "setCalValues", "CVSize" );
 
-    int setCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize ) {
-   	    int r;
-        if( ( !IS_HT6022_CVSIZE(CVSize) ) || ( Device.DeviceHandle == nullptr ) ||  ( CalValues == nullptr ) )
-	        return HT6022_ERROR_INVALID_PARAM;	
-	    r = libusb_control_transfer(Device.DeviceHandle, 
-	        		                HT6022_SETCALLEVEL_REQUEST_TYPE, 
-			    		            HT6022_SETCALLEVEL_REQUEST, 
-				    	            HT6022_SETCALLEVEL_VALUE, 
-					                HT6022_SETCALLEVEL_INDEX, 
-					                CalValues,
-					                CVSize, 0);
-	    if( r != CVSize ) {
-	        if (r != HT6022_ERROR_NO_DEVICE)
-		        r =  HT6022_ERROR_OTHER;
-	        return r;
-	    }
-	
-        return HT6022_SUCCESS; 
+        if( Device.DeviceHandle == nullptr )
+            throw InvalidParamOscilloscope( "setCalValues", "Device.DeviceHandle" );
+
+        if( CalValues == nullptr )
+            throw InvalidParamOscilloscope( "setCalValues", "CalValues" );
+
+	    int r = libusb_control_transfer( Device.DeviceHandle, 
+	        		                     HT6022_SETCALLEVEL_REQUEST_TYPE, 
+			    		                 HT6022_SETCALLEVEL_REQUEST, 
+				    	                 HT6022_SETCALLEVEL_VALUE, 
+					                     HT6022_SETCALLEVEL_INDEX, 
+					                     CalValues,
+					                     CVSize, 0 );
+	    
+	    if( r == HT6022_ERROR_NO_DEVICE )
+            throw NoDeviceOscilloscope("setCalValues");
+
+        if( r != CVSize )
+	        throw OscilloscopeException("В методе setCalValues произошло что-то неизвестное!!!");
     }
 
+    /** @brief getCalValues - pass
+     * */
+    void getCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize ) {
+        if( !IS_HT6022_CVSIZE(CVSize) )
+            throw InvalidParamOscilloscope( "getCalValues", "CVSize" );
 
-    int getCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize ) {
-        int r;
-	    if ( ( !IS_HT6022_CVSIZE(CVSize) ) || ( Device.DeviceHandle == nullptr ) ||  ( CalValues == nullptr ) ) 
-	        return HT6022_ERROR_INVALID_PARAM;	
-	    r = libusb_control_transfer(Device.DeviceHandle, 
-				                    HT6022_GETCALLEVEL_REQUEST_TYPE, 
-					                HT6022_GETCALLEVEL_REQUEST, 
-					                HT6022_GETCALLEVEL_VALUE, 
-					                HT6022_GETCALLEVEL_INDEX, 
-					                CalValues,
-					                CVSize, 0);
-	    if (r != CVSize) {
-	        if (r != HT6022_ERROR_NO_DEVICE)
-		        r = HT6022_ERROR_OTHER;
-	        return r;
-	    }
+        if( Device.DeviceHandle == nullptr )
+            throw InvalidParamOscilloscope( "getCalValues", "Device.DeviceHandle" );
 
-	    return HT6022_SUCCESS; 
+        if( CalValues == nullptr )
+            throw InvalidParamOscilloscope( "getCalValues", "CalValues" );
 
+	    int r = libusb_control_transfer( Device.DeviceHandle, 
+				                         HT6022_GETCALLEVEL_REQUEST_TYPE, 
+					                     HT6022_GETCALLEVEL_REQUEST, 
+					                     HT6022_GETCALLEVEL_VALUE, 
+					                     HT6022_GETCALLEVEL_INDEX, 
+					                     CalValues,
+					                     CVSize, 0 );
+
+	    if( r == HT6022_ERROR_NO_DEVICE )
+            throw NoDeviceOscilloscope("getCalValues");
+
+        if( r != CVSize )
+	        throw OscilloscopeException("В методе getCalValues произошло что-то неизвестное!!!");
     }
-#endif
+
+    void init() {
+        init_usb();
+        if( firmwareUpload() == 0 ) // Минимальная задержка при иницализации
+            std::this_thread::sleep_for(std::chrono::nanoseconds(2'000'000'000));
+        openDevice();
+        setSampleRate(HT6022_100KSa);
+        setCH1InputRate(HT6022_1V);
+        setCH2InputRate(HT6022_1V);
+    }
+
+    void close() {
+        closeDevice();
+	    libusb_exit(nullptr);
+    }
+
 public:
     Oscilloscope() {
-        std::cout << init() << std::endl;
-        std::cout << firmwareUpload() << std::endl;
-        //std::cout << "X";
-        std::this_thread::sleep_for(std::chrono::nanoseconds(50'000'000'000));
-        //std::cout << "X" << std::endl;
-#if 0
-        char c;
-    	do
-	    {
-		    printf ("Uploading firmware... Type <enter> when the red light starts blinking.");
-		    scanf ("%c", &c);
-	    } while (c != '\n');
-#endif
-
-        std::cout << openDevice() << std::endl;
-        //std::cout << HT6022_Init() << std::endl;
-        //std::cout << HT6022_FirmwareUpload() << std::endl;
-        //std::cout << HT6022_DeviceOpen(&Device) << std::endl;
-        //std::cout << "XXX" << std::endl;
-        std::cout << setSampleRate(HT6022_100KSa) << std::endl;
-        //std::cout << HT6022_SetSR(&Device, HT6022_100KSa) << std::endl;  /* 100KSa per channel. */
-        //std::cout << "XXX" << std::endl;
-        std::cout << setCH1InputRate(HT6022_1V) << std::endl;
-        std::cout << setCH2InputRate(HT6022_1V) << std::endl;
-        //std::cout << HT6022_SetCH1IR(&Device, HT6022_1V) << std::endl;   /* Channel 1 input range. */
-        //std::cout << "XXX" << std::endl;
-        //std::cout << HT6022_SetCH2IR(&Device, HT6022_1V) << std::endl;   /* Channel 2 input range. */
-        //std::cout << "XXX" << std::endl;
+        init();
     }
 
     ~Oscilloscope() {
         close();
-        //HT6022_DeviceClose(&Device);
-    	//HT6022_Exit();
-    }
-#if 1
-    int setSampleRate( HT6022_SRTypeDef SR ) {
-        int r;
-        unsigned char SampleRate = SR;
-	    if ((!IS_HT6022_SR (SR)) || (Device.DeviceHandle == nullptr))
-            return HT6022_ERROR_INVALID_PARAM;
-
-	    r = libusb_control_transfer(Device.DeviceHandle, 
-				                    HT6022_SR_REQUEST_TYPE, 
-					                HT6022_SR_REQUEST, 
-					                HT6022_SR_VALUE, 
-					                HT6022_SR_INDEX, 
-					                &SampleRate,
-					                HT6022_SR_SIZE, 0);
-	    if (r != HT6022_SR_SIZE) {
-	        if (r != HT6022_ERROR_NO_DEVICE)
-	            r = HT6022_ERROR_OTHER;
-	        return r;
-	    }
-
-	    return HT6022_SUCCESS;
     }
 
-    int setCH1InputRate( HT6022_IRTypeDef IR ) {
-        int r;
-        unsigned char InputRange = IR;
-        if ((!IS_HT6022_IR (IR)) || (Device.DeviceHandle == nullptr))
-            return HT6022_ERROR_INVALID_PARAM;	
-	    r = libusb_control_transfer(Device.DeviceHandle, 
-				                    HT6022_IR1_REQUEST_TYPE, 
-					                HT6022_IR1_REQUEST, 
-					                HT6022_IR1_VALUE, 
-					                HT6022_IR1_INDEX, 
-					                &InputRange, 
-				                    HT6022_IR1_SIZE, 0);
-	    if (r != HT6022_IR1_SIZE) {
-            if (r != HT6022_ERROR_NO_DEVICE)
-	    	    r = HT6022_ERROR_OTHER;
-	        return r;
-	    }
+    void setSampleRate( HT6022_SRTypeDef SR ) {
+        if( (!IS_HT6022_SR(SR)) )
+            throw InvalidParamOscilloscope( "setSampleRate", "SR" );
 
-	    return HT6022_SUCCESS;
+        if( Device.DeviceHandle == nullptr )
+            throw InvalidParamOscilloscope( "setSampleRate", "Device.DeviceHandle" );
+
+        uint8_t SampleRate = SR;
+	    int r = libusb_control_transfer( Device.DeviceHandle, 
+				                         HT6022_SR_REQUEST_TYPE, 
+					                     HT6022_SR_REQUEST, 
+					                     HT6022_SR_VALUE, 
+					                     HT6022_SR_INDEX, 
+					                     &SampleRate,
+					                     HT6022_SR_SIZE, 0 );
+	    if( r == HT6022_ERROR_NO_DEVICE )
+            throw NoDeviceOscilloscope("setSampleRate");
+
+        if( r != HT6022_SR_SIZE )
+	        throw OscilloscopeException("В методе setSampleRate произошло что-то неизвестное!!!");
     }
 
-    int setCH2InputRate( HT6022_IRTypeDef IR) {
-        int r;
-        unsigned char InputRange = IR;
-        if ((!IS_HT6022_IR (IR)) || (Device.DeviceHandle == nullptr))
-            return HT6022_ERROR_INVALID_PARAM;	
-	    r = libusb_control_transfer(Device.DeviceHandle,
-                                    HT6022_IR2_REQUEST_TYPE,
-                                    HT6022_IR2_REQUEST, 
-	                                HT6022_IR2_VALUE, 
-					                HT6022_IR2_INDEX, 
-					                &InputRange,
-				                    HT6022_IR2_SIZE, 0);
-        if(r != HT6022_IR2_SIZE) {
-            if (r != HT6022_ERROR_NO_DEVICE)
-	    	    r = HT6022_ERROR_OTHER;
-            return r;
-        }
+    /** @brief setCH2InputRate - задать уровень для канал CH2
+     *  @param IR - значение уровня:
+     *              * HT6022_10V диапазон от -5V    до 5V    
+  	 *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+  	 *              * HT6022_2V  диапазон от -1V    до 1V    
+  	 *              * HT6022_1V  диапазон от -500mv до 500mv 
+     * */
+    void setCH1InputRate( HT6022_IRTypeDef IR ) { setInputRate( false, IR ); }
 
-        return HT6022_SUCCESS; 
-    }
-#endif
-    std::vector<int> readFrame() {
-        std::vector<int> signal;
+    /** @brief setCH2InputRate - задать уровень для канал CH2
+     *  @param IR - значение уровня:
+     *              * HT6022_10V диапазон от -5V    до 5V    
+  	 *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+  	 *              * HT6022_2V  диапазон от -1V    до 1V    
+  	 *              * HT6022_1V  диапазон от -500mv до 500mv 
+     * */
+    void setCH2InputRate( HT6022_IRTypeDef IR ) { setInputRate( true, IR ); }
+
+    std::pair<std::vector<int>, std::vector<int>> readFrame() {
+        std::vector<int> ch1, ch2;
         uint8_t *CH1 = new uint8_t[HT6022_1MB];
 	    uint8_t *CH2 = new uint8_t[HT6022_1MB];
 
         readData( CH1, CH2, HT6022_1MB, 0 );
-        //HT6022_ReadData( &Device, CH1, CH2, HT6022_1MB, 0 );
-	    for( size_t i = 0; i < HT6022_1MB; ++i )
-		    signal.push_back( ( ((int)CH1[i]) - 127 ) );
+	    for( size_t i = 0; i < HT6022_1MB; ++i ) {
+		    ch1.push_back( ( ((int)CH1[i]) - 127 ) );
+            ch2.push_back( ( ((int)CH2[i]) - 127 ) );
+        }
 
         delete []CH1;
         delete []CH2;
-        return signal;
+        return std::pair<std::vector<int>, std::vector<int>>( ch1, ch2 );
     }
 };
 
 int main () {
     Oscilloscope osc;
-    auto signal = osc.readFrame();
+    auto signal = osc.readFrame().first;
     std::ofstream out("test.txt"); 
     for( auto it : signal )
         out << ((int)it) << ' ';
