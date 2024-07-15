@@ -316,15 +316,15 @@ void oscilloscopes::hantek::ht6022be::getCalValues( unsigned char* CalValues, HT
         throw OscilloscopeException("В методе getCalValues произошло что-то неизвестное!!!");
 }
 
-void oscilloscopes::hantek::ht6022be::init()
+void oscilloscopes::hantek::ht6022be::init( HT6022_SRTypeDef SR, HT6022_IRTypeDef IR1, HT6022_IRTypeDef IR2 )
 {
     init_usb();
     if( firmwareUpload() == 0 ) // Минимальная задержка при иницализации
         std::this_thread::sleep_for(std::chrono::nanoseconds(2'000'000'000));
     openDevice();
-    setSampleRate(HT6022_1MSa);
-    setCH1InputRate(HT6022_1V);
-    setCH2InputRate(HT6022_1V);
+    setSampleRate(SR);
+    setCH1InputRate(IR1);
+    setCH2InputRate(IR2);
 }
 
 void oscilloscopes::hantek::ht6022be::close()
@@ -333,9 +333,9 @@ void oscilloscopes::hantek::ht6022be::close()
     libusb_exit(nullptr);
 }
 
-oscilloscopes::hantek::ht6022be::ht6022be()
+oscilloscopes::hantek::ht6022be::ht6022be( HT6022_SRTypeDef SR, HT6022_IRTypeDef IR1, HT6022_IRTypeDef IR2 )
 {
-    init();
+    init( SR, IR1, IR2 );
 }
 
 oscilloscopes::hantek::ht6022be::~ht6022be()

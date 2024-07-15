@@ -21,13 +21,16 @@ namespace oscilloscopes
     namespace hantek
     {
 
-        typedef enum { 
+        /** @brief Ошибка
+         * */
+        typedef enum
+        {
             HT6022_SUCCESS  = 0,
             HT6022_ERROR_INVALID_PARAM = -2,
             HT6022_ERROR_ACCESS        = -3,
             HT6022_ERROR_NO_DEVICE     = -4,
             HT6022_ERROR_TIMEOUT       = -7,
-            HT6022_ERROR_NO_MEM        = -11, 
+            HT6022_ERROR_NO_MEM        = -11,
             HT6022_ERROR_OTHER         = -99
         } HT6022_ErrorTypeDef;
 
@@ -41,7 +44,8 @@ namespace oscilloscopes
 
         /** @brief Размер буфера
          */   
-        typedef enum { 
+        typedef enum
+        {
             HT6022_1KB   = 0x00000400, /*!< 1024 Bytes */
             HT6022_2KB   = 0x00000800, /*!< 2048 Bytes */
             HT6022_4KB   = 0x00001000, /*!< 4096 Bytes */
@@ -67,9 +71,10 @@ namespace oscilloscopes
                                    ((SIZE) == HT6022_512KB)||\
                                    ((SIZE) == HT6022_1MB))
 
-        /** @brief Size of calibration values buffer 
-         */   
-        typedef enum { 
+        /** @brief Размер калибровочного буфера, что то такое?
+         */
+        typedef enum
+        {
             HT6022_32B   = 0x00000010, /*!< 32 Bytes */
             HT6022_64B   = 0x00000020, /*!< 64 Bytes */
             HT6022_128B  = 0x00000080 /*!< 128 Bytes */
@@ -79,17 +84,18 @@ namespace oscilloscopes
                                  ((SIZE) == HT6022_64B)  ||\
                                  ((SIZE) == HT6022_128B))
 
-        /** @brief  Sample rate 
-         */   
-        typedef enum { 
-  	        HT6022_24MSa  = 0x30, /*!< 24MSa per channel */
+        /** @brief Частота семплирования
+         */
+        typedef enum
+        {
+            HT6022_24MSa  = 0x30, /*!< 24MSa per channel */
             HT6022_16MSa  = 0x10, /*!< 16MSa per channel */
-	        HT6022_8MSa   = 0x08, /*!< 8MSa per channel */
-	        HT6022_4MSa   = 0x04, /*!< 4MSa per channel */
-	        HT6022_1MSa   = 0x01, /*!< 1MSa per channel */
-	        HT6022_500KSa = 0x32, /*!< 500KSa per channel */
-	        HT6022_200KSa = 0x14, /*!< 200KSa per channel */
-	        HT6022_100KSa = 0x0A  /*!< 100KSa per channel */
+            HT6022_8MSa   = 0x08, /*!< 8MSa per channel */
+            HT6022_4MSa   = 0x04, /*!< 4MSa per channel */
+            HT6022_1MSa   = 0x01, /*!< 1MSa per channel */
+            HT6022_500KSa = 0x32, /*!< 500KSa per channel */
+            HT6022_200KSa = 0x14, /*!< 200KSa per channel */
+            HT6022_100KSa = 0x0A  /*!< 100KSa per channel */
         } HT6022_SRTypeDef;
 
 #define  IS_HT6022_SR(SR) (((SR) == HT6022_24MSa)  ||\
@@ -101,9 +107,10 @@ namespace oscilloscopes
                           ((SR) == HT6022_200KSa) ||\
                           ((SR) == HT6022_100KSa))
 
-        /** @brief Input range 
-         */   
-        typedef enum { 
+        /** @brief Масштаб
+         */
+        typedef enum
+        {
             HT6022_10V   = 0x01, /*!< -5V    to 5V    */
             HT6022_5V    = 0x02, /*!< -2.5V  to 2.5V  */
             HT6022_2V    = 0x05, /*!< -1V    to 1V    */
@@ -171,7 +178,8 @@ namespace oscilloscopes
         class ht6022be
         {
         private:
-            struct HT6022_DeviceTypeDef {
+            struct HT6022_DeviceTypeDef
+            {
                 libusb_device_handle *DeviceHandle;
                 uint8_t Address;
 
@@ -204,9 +212,9 @@ namespace oscilloscopes
              *              * true  CH2
              *  @param IR - значение уровня:
              *              * HT6022_10V диапазон от -5V    до 5V    
-  	         *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
-  	         *              * HT6022_2V  диапазон от -1V    до 1V    
-  	         *              * HT6022_1V  диапазон от -500mv до 500mv 
+             *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+             *              * HT6022_2V  диапазон от -1V    до 1V    
+             *              * HT6022_1V  диапазон от -500mv до 500mv 
              * */
             void setInputRate( const bool& chn, HT6022_IRTypeDef IR ); 
 
@@ -214,23 +222,67 @@ namespace oscilloscopes
              * */
             void readData( uint8_t* CH1, uint8_t* CH2, HT6022_DataSizeTypeDef DataSize, size_t TimeOut ); 
  
-            /** @brief setCalValues - pass
+            /** @brief setCalValues - не очень понятно что это и для чего нужно. Стоит оставить на всякий
              * */
             void setCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize );
 
-            /** @brief getCalValues - pass
+            /** @brief getCalValues - не очень понятно что это и для чего нужно. Стоит оставить на всякий
              * */
             void getCalValues( unsigned char* CalValues, HT6022_CVSizeTypeDef CVSize );
 
-            void init();
+            /** @brief init - инициализация осциллографа
+             *  @param SR - частота семплирования
+             *              * HT6022_24MSa
+             *              * HT6022_16MSa
+             *              * HT6022_8MSa
+             *              * HT6022_4MSa
+             *              * HT6022_1MSa
+             *              * HT6022_500KSa
+             *              * HT6022_200KSa
+             *              * HT6022_100KSa
+             *  @param IRx - уровень канала
+             *              * HT6022_10V диапазон от -5V    до 5V    
+             *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+             *              * HT6022_2V  диапазон от -1V    до 1V    
+             *              * HT6022_1V  диапазон от -500mv до 500mv 
+             * */
+            void init( HT6022_SRTypeDef SR, HT6022_IRTypeDef IR1, HT6022_IRTypeDef IR2 );
 
             void close();
 
         public:
-            ht6022be();
+            /** Конструктор
+             *  @param SR - частота семплирования
+             *              * HT6022_24MSa
+             *              * HT6022_16MSa
+             *              * HT6022_8MSa
+             *              * HT6022_4MSa
+             *              * HT6022_1MSa
+             *              * HT6022_500KSa
+             *              * HT6022_200KSa
+             *              * HT6022_100KSa
+             *  @param IRx - уровень канала
+             *              * HT6022_10V диапазон от -5V    до 5V    
+             *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+             *              * HT6022_2V  диапазон от -1V    до 1V    
+             *              * HT6022_1V  диапазон от -500mv до 500mv 
+             * */
+            ht6022be( HT6022_SRTypeDef SR = HT6022_1MSa, HT6022_IRTypeDef IR1 = HT6022_1V,
+                      HT6022_IRTypeDef IR2 = HT6022_1V );
 
             ~ht6022be();
 
+            /** @brief setSampleRate - задать частоту семплирования
+             *  @param SR - значение частоты
+             *              * HT6022_24MSa
+             *              * HT6022_16MSa
+             *              * HT6022_8MSa
+             *              * HT6022_4MSa
+             *              * HT6022_1MSa
+             *              * HT6022_500KSa
+             *              * HT6022_200KSa
+             *              * HT6022_100KSa
+             * */
             void setSampleRate( HT6022_SRTypeDef SR );
 
             /** @brief setCH2InputRate - задать уровень для канал CH2
@@ -251,11 +303,27 @@ namespace oscilloscopes
              * */
             void setCH2InputRate( HT6022_IRTypeDef IR );
 
+            /** @brief readFrame - метод считывание данных из каналов
+             *  @param DS - диапазаон считываемых значений
+             *              * HT6022_1KB
+             *              * HT6022_2KB
+             *              * HT6022_4KB
+             *              * HT6022_8KB
+             *              * HT6022_16KB
+             *              * HT6022_32KB
+             *              * HT6022_64KB
+             *              * HT6022_128KB
+             *              * HT6022_256KB
+             *              * HT6022_512KB
+             *              * HT6022_1MB
+             *  @param calibrX - калибровочное значение. Расчитывается при отключенных щупах, среднее
+             *                   значение с массива. Один раз достаточно посчитать
+             * */
             std::pair<std::vector<int>, std::vector<int>> readFrame( HT6022_DataSizeTypeDef DS,
                                                                      const double &calibr1 = 0.0,
                                                                      const double &calibr2 = 0.0 );
  
-        };
+        };  // HT6022BE
         
 
     };  // hantek
