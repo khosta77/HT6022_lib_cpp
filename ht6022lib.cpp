@@ -1,11 +1,13 @@
 #include "ht6022lib.h"
 
+// Макросы для настройки firm ware
 #define HT6022_FIRMWARE_SIZE         458
 #define HT6022_FIRMWARE_VENDOR_ID    0x4B4
 #define HT6022_FIRMWARE_REQUEST_TYPE 0x40
 #define HT6022_FIRMWARE_REQUEST      0xA0
 #define HT6022_FIRMWARE_INDEX        0x00
 
+// Макросы для настройки параметров осцилографа
 #define HT6022_VENDOR_ID                  0x4B5
 #define HT6022_MODEL                      0x6022
 #define HT6022_IR1_REQUEST_TYPE           0x40
@@ -33,7 +35,7 @@
 #define HT6022_GETCALLEVEL_INDEX          0x00
 #define HT6022_READ_CONTROL_REQUEST_TYPE  0x40
 #define HT6022_READ_CONTROL_REQUEST       0xE3
-#define HT6022_READ_CONTROL_VALUE 	      0x00
+#define HT6022_READ_CONTROL_VALUE         0x00
 #define HT6022_READ_CONTROL_INDEX         0x00
 #define HT6022_READ_CONTROL_SIZE          0x01
 #define HT6022_READ_CONTROL_DATA          0x01
@@ -55,7 +57,7 @@ int oscilloscopes::hantek::ht6022be::firmwareUpload()
     unsigned int Size;
     unsigned int Value;
     int n;
-	    
+
     Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
     if( Dev_handle == 0 )
         return -1;
@@ -66,36 +68,36 @@ int oscilloscopes::hantek::ht6022be::firmwareUpload()
         {
             libusb_close(Dev_handle);
             throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
-	    }
+        }
     }
 
     if( libusb_claim_interface( Dev_handle, 0 ) < 0 ) {
-	    libusb_close(Dev_handle);
+        libusb_close(Dev_handle);
         throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
-	}
+    }
 
     n = HT6022_FIRMWARE_SIZE;
     Firmware = HT6022_Firmware;
     while(n)
-    {	
+    {
         Size  = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
-	    Firmware += 2;
-	    Value = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
         Firmware += 2;
-		
-        if( libusb_control_transfer( Dev_handle,     
-                                     HT6022_FIRMWARE_REQUEST_TYPE,               
-                                     HT6022_FIRMWARE_REQUEST, 
-					                 Value,           
+        Value = ( *Firmware + ( ( *( Firmware + 1 ) ) << 0x08 ) );
+        Firmware += 2;
+
+        if( libusb_control_transfer( Dev_handle,
+                                     HT6022_FIRMWARE_REQUEST_TYPE,
+                                     HT6022_FIRMWARE_REQUEST,
+                                     Value,
                                      HT6022_FIRMWARE_INDEX, 
                                      Firmware, Size, 0 ) != Size )
         {
-			libusb_release_interface( Dev_handle, 0 );
-		    libusb_close(Dev_handle);
+            libusb_release_interface( Dev_handle, 0 );
+            libusb_close(Dev_handle);
             throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
-	    }
+        }
         Firmware += Size;
-	    --n;
+        --n;
     }
 
     libusb_release_interface( Dev_handle, 0 );
@@ -116,22 +118,22 @@ void oscilloscopes::hantek::ht6022be::openDevice()
     if (DeviceCount <= 0) 
         throw OscilloscopeException("Метод openDevice, подключенные девайсы отстутствуют.");
 
-	for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)
+    for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)
     {
         Address = libusb_get_device_address (DeviceList[DeviceIterator]);
         if( HT6022_AddressList[Address] == 0 )
         {
-		    if( libusb_get_device_descriptor( DeviceList[DeviceIterator], &desc ) == 0 )  // VID и PID
+            if( libusb_get_device_descriptor( DeviceList[DeviceIterator], &desc ) == 0 )  // VID и PID
             {
-    		    if( ( desc.idVendor  == HT6022_VENDOR_ID ) && ( desc.idProduct == HT6022_MODEL ) )
+                if( ( desc.idVendor  == HT6022_VENDOR_ID ) && ( desc.idProduct == HT6022_MODEL ) )
                     break;
             }
         }
-	}
+    }
 
     if( DeviceIterator == DeviceCount )
     {
-		libusb_free_device_list( DeviceList, 1 );
+        libusb_free_device_list( DeviceList, 1 );
         throw NoDeviceOscilloscope("openDevice");
     }
 
@@ -145,23 +147,23 @@ void oscilloscopes::hantek::ht6022be::openDevice()
             throw AccessOscilloscopeException("openDevice");
         throw OscilloscopeException("В методе openDevice произошло что-то неизвестное!!!");
     }
-		
+
     if(libusb_kernel_driver_active(DeviceHandle, 0) == 1)
     {
         if(libusb_detach_kernel_driver(DeviceHandle, 0) != 0)
         {
-		    libusb_close(DeviceHandle);
+            libusb_close(DeviceHandle);
             throw OscilloscopeException("В методе openDevice, функция libusb_detach_kernel_driver вернула не 0");
         }
     }
-						
-	if(libusb_claim_interface(DeviceHandle, 0) != 0)
+
+    if(libusb_claim_interface(DeviceHandle, 0) != 0)
     {
-	    libusb_close(DeviceHandle);
+        libusb_close(DeviceHandle);
         throw OscilloscopeException("В методе openDevice, функция libusb_claim_interface вернула не 0");
-	}
-	
-	HT6022_AddressList[Address] = 0x01;	
+    }
+
+    HT6022_AddressList[Address] = 0x01;	
     Device.Address = Address;
     Device.DeviceHandle = DeviceHandle;
 }
@@ -170,12 +172,12 @@ void oscilloscopes::hantek::ht6022be::closeDevice()
 {
     if( Device.DeviceHandle != nullptr )
     {
-	    libusb_release_interface( Device.DeviceHandle, 0 );
+        libusb_release_interface( Device.DeviceHandle, 0 );
         libusb_close(Device.DeviceHandle);
-	    HT6022_AddressList[Device.Address] = 0x00;
-	    Device.DeviceHandle = nullptr;
+        HT6022_AddressList[Device.Address] = 0x00;
+        Device.DeviceHandle = nullptr;
         Device.Address = 0;
-	}
+    }
 }
 
 void oscilloscopes::hantek::ht6022be::setInputRate( const bool& chn, HT6022_IRTypeDef IR )
@@ -190,7 +192,7 @@ void oscilloscopes::hantek::ht6022be::setInputRate( const bool& chn, HT6022_IRTy
     int r = libusb_control_transfer( Device.DeviceHandle,
                                      ( (chn) ? HT6022_IR1_REQUEST_TYPE : HT6022_IR2_REQUEST_TYPE ),
                                      ( (chn) ? HT6022_IR1_REQUEST : HT6022_IR2_REQUEST ), 
-				                     ( (chn) ? HT6022_IR1_VALUE : HT6022_IR2_VALUE ),
+                                     ( (chn) ? HT6022_IR1_VALUE : HT6022_IR2_VALUE ),
                                      ( (chn) ? HT6022_IR1_INDEX : HT6022_IR2_INDEX ),
                                      &InputRange,
                                      ( (chn) ? HT6022_IR1_SIZE : HT6022_IR2_SIZE ),
@@ -221,44 +223,44 @@ void oscilloscopes::hantek::ht6022be::readData( uint8_t* CH1, uint8_t* CH2, HT60
     uint8_t *data = new uint8_t[( sizeof(uint8_t) * DataSize * 2 )];
     if( data == nullptr )
         throw MemoryException( "readData", "data" );
-  	   
-	*data = HT6022_READ_CONTROL_DATA;
-    int r = libusb_control_transfer( Device.DeviceHandle, 
-	    		                     HT6022_READ_CONTROL_REQUEST_TYPE, 
-			    		             HT6022_READ_CONTROL_REQUEST, 
-				    	             HT6022_READ_CONTROL_VALUE, 
-					                 HT6022_READ_CONTROL_INDEX, 
-					                 data,
-					                 HT6022_READ_CONTROL_SIZE, 0 );
 
-	if( r != HT6022_READ_CONTROL_SIZE )
+    *data = HT6022_READ_CONTROL_DATA;
+    int r = libusb_control_transfer( Device.DeviceHandle,
+                                     HT6022_READ_CONTROL_REQUEST_TYPE,
+                                     HT6022_READ_CONTROL_REQUEST,
+                                     HT6022_READ_CONTROL_VALUE,
+                                     HT6022_READ_CONTROL_INDEX,
+                                     data,
+                                     HT6022_READ_CONTROL_SIZE, 0 );
+
+    if( r != HT6022_READ_CONTROL_SIZE )
     {
         delete []data;
-	    throw OscilloscopeException("В методе readData произошло что-то неизвестное!!!");
+        throw OscilloscopeException("В методе readData произошло что-то неизвестное!!!");
     }
 
     int nread;
     r = libusb_bulk_transfer( Device.DeviceHandle,
-	    	                  HT6022_READ_BULK_PIPE, 
+                              HT6022_READ_BULK_PIPE, 
                               data, 
-				              ( DataSize * 2 ), 
-				              &nread, 
-				              TimeOut ); 
+                              ( DataSize * 2 ), 
+                              &nread, 
+                              TimeOut ); 
 
-	if( ( ( r != HT6022_SUCCESS ) || ( nread != ( DataSize * 2 ) ) ) )
+    if( ( ( r != HT6022_SUCCESS ) || ( nread != ( DataSize * 2 ) ) ) )
     {
         delete []data;
         throw OscilloscopeException("В методе readData произошло что-то неизвестное!!!");
-	} 
-	  
+    }
+
     uint8_t *data_temp = data;
     while(nread)
     {
         *CH1++ = *data_temp++;
         *CH2++ = *data_temp++;
-	    nread -= 2;
+        nread -= 2;
     }
-	  
+
     delete []data;
 }
  
@@ -273,15 +275,15 @@ void oscilloscopes::hantek::ht6022be::setCalValues( unsigned char* CalValues, HT
     if( CalValues == nullptr )
         throw InvalidParamOscilloscope( "setCalValues", "CalValues" );
 
-    int r = libusb_control_transfer( Device.DeviceHandle, 
-	        		                 HT6022_SETCALLEVEL_REQUEST_TYPE, 
-			    		             HT6022_SETCALLEVEL_REQUEST, 
-				    	             HT6022_SETCALLEVEL_VALUE, 
-					                 HT6022_SETCALLEVEL_INDEX, 
-					                 CalValues,
-				                     CVSize, 0 );
-	    
-	if( r == HT6022_ERROR_NO_DEVICE )
+    int r = libusb_control_transfer( Device.DeviceHandle,
+                                     HT6022_SETCALLEVEL_REQUEST_TYPE,
+                                     HT6022_SETCALLEVEL_REQUEST,
+                                     HT6022_SETCALLEVEL_VALUE,
+                                     HT6022_SETCALLEVEL_INDEX,
+                                     CalValues,
+                                     CVSize, 0 );
+
+    if( r == HT6022_ERROR_NO_DEVICE )
         throw NoDeviceOscilloscope("setCalValues");
 
     if( r != CVSize )
@@ -299,13 +301,13 @@ void oscilloscopes::hantek::ht6022be::getCalValues( unsigned char* CalValues, HT
     if( CalValues == nullptr )
         throw InvalidParamOscilloscope( "getCalValues", "CalValues" );
 
-    int r = libusb_control_transfer( Device.DeviceHandle, 
-				                     HT6022_GETCALLEVEL_REQUEST_TYPE, 
-					                 HT6022_GETCALLEVEL_REQUEST, 
-					                 HT6022_GETCALLEVEL_VALUE, 
-					                 HT6022_GETCALLEVEL_INDEX, 
-					                 CalValues,
-				                     CVSize, 0 );
+    int r = libusb_control_transfer( Device.DeviceHandle,
+                                     HT6022_GETCALLEVEL_REQUEST_TYPE,
+                                     HT6022_GETCALLEVEL_REQUEST,
+                                     HT6022_GETCALLEVEL_VALUE,
+                                     HT6022_GETCALLEVEL_INDEX,
+                                     CalValues,
+                                     CVSize, 0 );
 
     if( r == HT6022_ERROR_NO_DEVICE )
         throw NoDeviceOscilloscope("getCalValues");
@@ -320,7 +322,7 @@ void oscilloscopes::hantek::ht6022be::init()
     if( firmwareUpload() == 0 ) // Минимальная задержка при иницализации
         std::this_thread::sleep_for(std::chrono::nanoseconds(2'000'000'000));
     openDevice();
-    setSampleRate(HT6022_100KSa);
+    setSampleRate(HT6022_1MSa);
     setCH1InputRate(HT6022_1V);
     setCH2InputRate(HT6022_1V);
 }
@@ -350,13 +352,13 @@ void oscilloscopes::hantek::ht6022be::setSampleRate( HT6022_SRTypeDef SR )
         throw InvalidParamOscilloscope( "setSampleRate", "Device.DeviceHandle" );
 
     uint8_t SampleRate = SR;
-    int r = libusb_control_transfer( Device.DeviceHandle, 
-                                     HT6022_SR_REQUEST_TYPE, 
-					                 HT6022_SR_REQUEST, 
-					                 HT6022_SR_VALUE, 
-					                 HT6022_SR_INDEX, 
-					                 &SampleRate,
-				                     HT6022_SR_SIZE, 0 );
+    int r = libusb_control_transfer( Device.DeviceHandle,
+                                     HT6022_SR_REQUEST_TYPE,
+                                     HT6022_SR_REQUEST,
+                                     HT6022_SR_VALUE,
+                                     HT6022_SR_INDEX,
+                                     &SampleRate,
+                                     HT6022_SR_SIZE, 0 );
     if( r == HT6022_ERROR_NO_DEVICE )
         throw NoDeviceOscilloscope("setSampleRate");
 
@@ -374,17 +376,21 @@ void oscilloscopes::hantek::ht6022be::setCH2InputRate( HT6022_IRTypeDef IR )
     setInputRate( true, IR );
 }
 
-std::pair<std::vector<int>, std::vector<int>> oscilloscopes::hantek::ht6022be::readFrame()
+std::pair<std::vector<int>, std::vector<int>> oscilloscopes::hantek::ht6022be::readFrame( 
+        HT6022_DataSizeTypeDef DS, const double &calibr1, const double &calibr2 )
 {
-    std::vector<int> ch1, ch2;
-    uint8_t *CH1 = new uint8_t[HT6022_1MB];
-    uint8_t *CH2 = new uint8_t[HT6022_1MB];
+    if( (!IS_HT6022_DATASIZE(DS)) )
+        throw InvalidParamOscilloscope( "readFrame", "DS" );
 
-    readData( CH1, CH2, HT6022_1MB, 0 );
-    for( size_t i = 0; i < HT6022_1MB; ++i )
+    std::vector<int> ch1, ch2;
+    uint8_t *CH1 = new uint8_t[DS];
+    uint8_t *CH2 = new uint8_t[DS];
+
+    readData( CH1, CH2, DS, 0 );
+    for( size_t i = 0; i < DS; ++i )
     {
-	    ch1.push_back( ( ((int)CH1[i]) - 127 ) );
-        ch2.push_back( ( ((int)CH2[i]) - 127 ) );
+        ch1.push_back( ( ((int)CH1[i]) - 127 ) - calibr1 );
+        ch2.push_back( ( ((int)CH2[i]) - 127 ) - calibr2 );
     }
 
     delete []CH1;
@@ -395,7 +401,7 @@ std::pair<std::vector<int>, std::vector<int>> oscilloscopes::hantek::ht6022be::r
 
 uint8_t HT6022_AddressList [256] =
 {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2706,4 +2712,5 @@ uint8_t HT6022_Firmware[] =
 0x00, 0xe6,  /*Value*/
 0x00         /*Data*/
 };
+
 

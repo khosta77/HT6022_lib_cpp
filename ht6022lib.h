@@ -32,11 +32,11 @@ namespace oscilloscopes
         } HT6022_ErrorTypeDef;
 
 #define IS_HT6022_ERROR(ERROR) (((ERROR) == HT6022_SUCCESS) || \
-				                ((ERROR) == HT6022_ERROR_INVALID_PARAM) || \
-				                ((ERROR) == HT6022_ERROR_ACCESS )   || \
-				                ((ERROR) == HT6022_ERROR_NO_DEVICE) || \
-				                ((ERROR) == HT6022_ERROR_TIMEOUT)   || \
-				                ((ERROR) == HT6022_ERROR_NO_MEM)    || \
+                                ((ERROR) == HT6022_ERROR_INVALID_PARAM) || \
+                                ((ERROR) == HT6022_ERROR_ACCESS )   || \
+                                ((ERROR) == HT6022_ERROR_NO_DEVICE) || \
+                                ((ERROR) == HT6022_ERROR_TIMEOUT)   || \
+                                ((ERROR) == HT6022_ERROR_NO_MEM)    || \
                                 ((ERROR) == HT6022_ERROR_OTHER))
 
         /** @brief Размер буфера
@@ -104,10 +104,10 @@ namespace oscilloscopes
         /** @brief Input range 
          */   
         typedef enum { 
-  	        HT6022_10V   = 0x01, /*!< -5V    to 5V    */
-  	        HT6022_5V    = 0x02, /*!< -2.5V  to 2.5V  */
-  	        HT6022_2V    = 0x05, /*!< -1V    to 1V    */
-  	        HT6022_1V    = 0x0A  /*!< -500mv to 500mv */
+            HT6022_10V   = 0x01, /*!< -5V    to 5V    */
+            HT6022_5V    = 0x02, /*!< -2.5V  to 2.5V  */
+            HT6022_2V    = 0x05, /*!< -1V    to 1V    */
+            HT6022_1V    = 0x0A  /*!< -500mv to 500mv */
         } HT6022_IRTypeDef;
 
 #define  IS_HT6022_IR(IR)   (((IR) == HT6022_10V) ||\
@@ -123,8 +123,8 @@ namespace oscilloscopes
             explicit OscilloscopeException( const std::string &msg ) : m_msg(msg) {}
             const char *what() const noexcept override
             {
-		        return m_msg.c_str();
-	        }
+                return m_msg.c_str();
+            }
 
         private:
             std::string m_msg;
@@ -172,13 +172,13 @@ namespace oscilloscopes
         {
         private:
             struct HT6022_DeviceTypeDef {
-	            libusb_device_handle *DeviceHandle;
-	            uint8_t Address;
+                libusb_device_handle *DeviceHandle;
+                uint8_t Address;
 
                 HT6022_DeviceTypeDef() : DeviceHandle(nullptr), Address(0x00) {}
             };
 
-	        HT6022_DeviceTypeDef Device;
+            HT6022_DeviceTypeDef Device;
 
             /** @brief init_usb - Инициализация usb
              * */
@@ -212,7 +212,7 @@ namespace oscilloscopes
 
             /** @brief readData - считать данные из каналов
              * */
-            void readData( uint8_t* CH1, uint8_t* CH2, HT6022_DataSizeTypeDef DataSize, size_t  TimeOut ); 
+            void readData( uint8_t* CH1, uint8_t* CH2, HT6022_DataSizeTypeDef DataSize, size_t TimeOut ); 
  
             /** @brief setCalValues - pass
              * */
@@ -236,22 +236,24 @@ namespace oscilloscopes
             /** @brief setCH2InputRate - задать уровень для канал CH2
              *  @param IR - значение уровня:
              *              * HT6022_10V диапазон от -5V    до 5V    
-  	         *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
-  	         *              * HT6022_2V  диапазон от -1V    до 1V    
-  	         *              * HT6022_1V  диапазон от -500mv до 500mv 
+             *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+             *              * HT6022_2V  диапазон от -1V    до 1V    
+             *              * HT6022_1V  диапазон от -500mv до 500mv 
              * */
             void setCH1InputRate( HT6022_IRTypeDef IR );
 
             /** @brief setCH2InputRate - задать уровень для канал CH2
              *  @param IR - значение уровня:
              *              * HT6022_10V диапазон от -5V    до 5V    
-  	         *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
-  	         *              * HT6022_2V  диапазон от -1V    до 1V    
-  	         *              * HT6022_1V  диапазон от -500mv до 500mv 
+             *              * HT6022_5V  диапазон от -2.5V  до 2.5V  
+             *              * HT6022_2V  диапазон от -1V    до 1V    
+             *              * HT6022_1V  диапазон от -500mv до 500mv 
              * */
             void setCH2InputRate( HT6022_IRTypeDef IR );
 
-            std::pair<std::vector<int>, std::vector<int>> readFrame();
+            std::pair<std::vector<int>, std::vector<int>> readFrame( HT6022_DataSizeTypeDef DS,
+                                                                     const double &calibr1 = 0.0,
+                                                                     const double &calibr2 = 0.0 );
  
         };
         
