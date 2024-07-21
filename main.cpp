@@ -1,7 +1,6 @@
-
-
 #include "ht6022lib.h"
 #include "gnuplot.h"
+#include <algorithm>
 
 void plotgnuplot()
 {
@@ -27,33 +26,141 @@ void plotgnuplot()
 	gp.sendLine("	'' using 1:3 with lines linestyle 2 title 'line2'");
 }
 
+#define CH1 0.914306640625
+
+using namespace oscilloscopes::hantek;
+
+using Signal = std::vector<int>;
+using Signals = std::vector<Signal>;
+
+Signals readManySignals( const size_t& size )
+{
+    Signals signals;
+    ht6022be osc;
+    for( size_t i = 0; i < size; ++i )
+        signals.push_back( osc.readFrame( HT6022_1KB, CH1 ).first );
+    return signals;
+}
+
+void progressbar( int i, int start, int end, const int& barSize = 70 )
+{
+    float progress = ( (float)i / (float)end );
+    int pos = barSize * progress;
+    std::cout << "[";
+    for( int j = 0; j < barSize; j++ )
+    {
+        if( j < pos )
+            std::cout << "=";
+        else if( j == pos )
+            std::cout << ">";
+        else
+            std::cout << " ";
+    }
+    std::cout << "] " << ((int)( progress * 100 )) << " %\r";
+    std::cout.flush();
+}
+
+
+Signals findZero( Signals signals )
+{
+    const size_t size = signals[0].size();
+    Signals total;
+    for( size_t i = 0; i < size; ++i )
+    {
+        Signal line;
+        progressbar( i, 0, size );
+        size_t count = 0;
+        for( size_t j = i; j < size; ++j )
+        {
+            for( size_t k = 0; k < ( size - i ); ++k )
+            {
+                if( ( signals[0][j] - signals[1][k] ) == 0 )
+                {
+                    ++count;
+                }
+                else
+                {
+                    if( count == 0 )
+                        continue;
+                    line.push_back(count);
+                    count = 0;
+                }
+            }
+        }
+        total.push_back(line);
+    }
+    progressbar( size, 0, size );
+    std::cout << std::endl;
+    return total;
+}
+
+size_t sizeZero( const Signal& line)
+{
+    size_t size = 0;
+    for( auto& it : line )
+    {
+        if( it == 0 )
+            ++size;
+    }
+    return size;
+}
+
+int fmax( const Signal& line )
+{
+    if( line.size() == 0 )
+        return -1;
+    int max = line[0];
+    
+    for( size_t i = 1; i < line.size(); ++i )
+    {
+        if( line[i] > max )
+            max = line[i];
+    }
+
+    return max;
+}
+
+void print( Signals total )
+{
+    for( size_t i = 0; i < total.size(); ++i )
+    {
+        std::cout << std::setw(6) << i << "|" << std::setw(6) << fmax(total[i]) << std::endl;
+    }
+}
+
 int main()
 {
-    oscilloscopes::hantek::ht6022be osc;
+    auto signals = readManySignals(2);
+    auto zeros = findZero(signals); 
+    print(zeros);
+#if 1
+    //ht6022be osc;
     std::ofstream out_ch1("signal_CH1.txt"), out_ch2("signal_CH2.txt"); 
-    for( size_t i = 0, j = 0; i < 3; ++i )
+    size_t j = 0;
+    for( auto signal : signals )
     {
-        auto signal = osc.readFrame(oscilloscopes::hantek::HT6022_1MB, 0.914306640625, 9.122314453125);
+        //auto signal = osc.readFrame( HT6022_1KB, CH1 );
 
 
-        for( size_t k = 0; k < signal.first.size(); ++k, ++j )
+        for( size_t i = 0; i < signal.size(); ++i, ++j )
 		{
-            out_ch1 << ( j ) << ' ' << ((int)signal.first[k]);
-			if( k > ( signal.first.size() - 3 ) )
-			{
-				out_ch1 << ' ' << -127;
+            out_ch1 << ( j ) << ' ' << ((int)signal[i]) << std::endl;
+		    if( i > ( signal.size() - 3 ) )
+			//{
+			//	out_ch1 << ' ' << -127;
 				std::cout << j << std::endl;
-			}
-			else
-				out_ch1 << ' ' << 1000;
-			out_ch1 << std::endl;
+			//}
+			//else
+			//	out_ch1 << ' ' << 1000;
+			//out_ch1 << std::endl;
 		}
 		//for( auto it : signal.second )
         //    out_ch2 << ((int)it) << ' ';
     }
     out_ch1.close();
     out_ch2.close();
-	plotgnuplot();
+	//plotgnuplot();
+#endif
     return 0;
 }
 
