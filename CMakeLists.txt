@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(USBOscilloscope)
 
-# Код для MacOS
-if(APPLE)
+if(APPLE)  # Код для MacOS
     execute_process(
         COMMAND sw_vers -productVersion
         OUTPUT_VARIABLE OSX_VERSION
@@ -13,8 +12,7 @@ if(APPLE)
     link_directories(/opt/homebrew/Cellar/libusb/1.0.26/lib)
 endif()
 
-# Проверим есть ли у нас операционка Raspbian
-execute_process(
+execute_process(  # Проверим есть ли у нас операционка Raspbian
         COMMAND cat /etc/os-release
         COMMAND grep "NAME=\"Raspbian GNU/Linux\""
         OUTPUT_VARIABLE IS_THIS_RASPBERRY_PI
@@ -22,8 +20,7 @@ execute_process(
     )
 
 if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
-    # Выведем уведомление о том какая у нас версия Raspberry
-    execute_process(
+    execute_process(  # Выведем уведомление о том какая у нас версия Raspberry
         COMMAND cat /proc/cpuinfo
         COMMAND grep "Model"
         COMMAND cut -d: -f2-
@@ -38,8 +35,14 @@ if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
     pkg_search_module(LIBUSB REQUIRED libusb-1.0)
 endif()
 
+
+# Выставить версию с++17
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
 # Добавление исполняемого файла с именем main.out
-add_executable(main.out ./project/*.cpp)
+add_executable(main.out ./project/main.cpp ./project/ht6022lib.cpp)
+
 
 # Включение заголовочных файлов и библиотек libusb
 if(APPLE)
