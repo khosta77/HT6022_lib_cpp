@@ -80,19 +80,42 @@ void oscilloscopes::hantek::ht6022be::init_usb()
  
 int oscilloscopes::hantek::ht6022be::firmwareUpload()
 {
+    libusb_device **DeviceList;
+    //libusb_device_handle *DeviceHandle;
+
+    const int DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
+    if (DeviceCount <= 0) 
+        throw OscilloscopeException("Метод firmwareUpload, подключенные девайсы отстутствуют.");
+
+    auto AddIt = findDevice( DeviceList, DeviceCount, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
+    int DeviceIterator = AddIt.first;
+    uint8_t Address = AddIt.second;
+
+    std::cout << DeviceIterator << ' ' << DeviceCount << std::endl;
+    if( DeviceIterator == DeviceCount )
+    {
+        libusb_free_device_list( DeviceList, 1 );
+        return -1;
+        //throw NoDeviceOscilloscope("openDevice");
+    }
+
     libusb_device_handle *Dev_handle;
+    int r = libusb_open(DeviceList[DeviceIterator], &Dev_handle);
+    libusb_free_device_list(DeviceList, 1);
+
+
     uint8_t *Firmware;
     unsigned int Size;
     unsigned int Value;
     int n;
 
     // Метод системы очко...
-    Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
-    if( Dev_handle == 0 )
-    {
-        std::cout << "Dev_handle == nullptr" << std::endl;
-        return -1;
-    }
+    //Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
+    //if( Dev_handle == 0 )
+    //{
+    //    std::cout << "Dev_handle == nullptr" << std::endl;
+    //    return -1;
+    //}
     if( libusb_kernel_driver_active( Dev_handle, 0 ) == 1 )
     {
         if( libusb_detach_kernel_driver( Dev_handle, 0 ) != 0 )
@@ -138,34 +161,16 @@ int oscilloscopes::hantek::ht6022be::firmwareUpload()
 
 void oscilloscopes::hantek::ht6022be::openDevice()
 {
-    struct libusb_device_descriptor desc;
     libusb_device **DeviceList;
     libusb_device_handle *DeviceHandle;
-    int DeviceCount;
-    int DeviceIterator;
-    uint8_t Address;
-// Вот это вставить выше	
-    DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
+
+    const int DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
     if (DeviceCount <= 0) 
         throw OscilloscopeException("Метод openDevice, подключенные девайсы отстутствуют.");
 
     auto AddIt = findDevice( DeviceList, DeviceCount, HT6022_VENDOR_ID, HT6022_MODEL );
-    DeviceIterator = AddIt.first;
-    Address = AddIt.second;
-#if 0
-    for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)
-    {
-        Address = libusb_get_device_address (DeviceList[DeviceIterator]);
-        if( HT6022_AddressList[Address] == 0 )
-        {
-            if( libusb_get_device_descriptor( DeviceList[DeviceIterator], &desc ) == 0 )  // VID и PID
-            {
-                if( ( desc.idVendor  == HT6022_VENDOR_ID ) && ( desc.idProduct == HT6022_MODEL ) )
-                    break;
-            }
-        }
-    }
-#endif
+    int DeviceIterator = AddIt.first;
+    uint8_t Address = AddIt.second;
 
     std::cout << DeviceIterator << ' ' << DeviceCount << std::endl;
     if( DeviceIterator == DeviceCount )
