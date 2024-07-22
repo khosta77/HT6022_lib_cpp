@@ -1,6 +1,7 @@
 #include "ht6022lib.h"
 #include "gnuplot.h"
 #include <algorithm>
+#include <iomanip>
 
 void plotgnuplot()
 {
