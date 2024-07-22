@@ -57,14 +57,14 @@ int oscilloscopes::hantek::Hantek6022::firmwareUpload()
         if( libusb_detach_kernel_driver( Dev_handle, 0 ) != 0 )
         {
             libusb_close(Dev_handle);
-            throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
+            throw OscilloscopeException("В методе firmwareUpload функция libusb_detach_kernel_driver произошло что-то неизвестное!!!");
         }
     }
 
     if( libusb_claim_interface( Dev_handle, 0 ) < 0 )
     {
         libusb_close(Dev_handle);
-        throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
+        throw OscilloscopeException("В методе firmwareUpload функция libusb_claim_interface произошло что-то неизвестное!!!");
     }
 
     int n = HT6022_FIRMWARE_SIZE;
@@ -83,7 +83,7 @@ int oscilloscopes::hantek::Hantek6022::firmwareUpload()
         {
             libusb_release_interface( Dev_handle, 0 );
             libusb_close(Dev_handle);
-            throw OscilloscopeException("В методе firmwareUpload произошло что-то неизвестное!!!");
+            throw OscilloscopeException("В методе firmwareUpload в цикле произошло что-то неизвестное!!!");
         }
         Firmware += Size;
         --n;
