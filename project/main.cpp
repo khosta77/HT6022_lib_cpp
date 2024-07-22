@@ -1,8 +1,9 @@
-#include "ht6022lib.h"
-#include "gnuplot.h"
+#include "hantek6022.h"
+//#include "gnuplot.h"
 #include <algorithm>
 #include <iomanip>
 
+#if 0
 void plotgnuplot()
 {
     GnuplotPipe gp;
@@ -26,14 +27,14 @@ void plotgnuplot()
 	gp.sendLine("plot './signal_CH1.txt' using 1:2 with lines linestyle 1 title 'data',\\");
 	gp.sendLine("	'' using 1:3 with lines linestyle 2 title 'line2'");
 }
+#endif
 
-#define CH1 0.914306640625
+//#define CH1 0.914306640625
 
-using namespace oscilloscopes::hantek;
+//using Signal = std::vector<int>;
+//using Signals = std::vector<Signal>;
 
-using Signal = std::vector<int>;
-using Signals = std::vector<Signal>;
-
+#if 0
 Signals readManySignals( const size_t& size )
 {
     Signals signals;
@@ -42,7 +43,8 @@ Signals readManySignals( const size_t& size )
         signals.push_back( osc.readFrame( HT6022_1KB, CH1 ).first );
     return signals;
 }
-
+#endif
+#if 0
 void progressbar( int i, int start, int end, const int& barSize = 70 )
 {
     float progress = ( (float)i / (float)end );
@@ -128,10 +130,21 @@ void print( Signals total )
         std::cout << std::setw(6) << i << "|" << std::setw(6) << fmax(total[i]) << std::endl;
     }
 }
+#endif
+using namespace oscilloscopes::hantek;
+
+using HT6022 = oscilloscopes::hantek::Hantek6022;
 
 int main()
 {
-    auto signals = readManySignals(2);
+    Hantek6022 oscilloscope;
+    auto df = oscilloscope.getSignalFrame(HT6022::_8KB);
+    auto CH1 = df[0];
+    std::cout << CH1._signalSize << ' ' << CH1._signal.size() << std::endl;
+    for( size_t i = 0; i < CH1._signalSize; ++i )
+        std::cout << CH1._signal[i] << ' ';
+    std::cout << std::endl;
+    //auto signals = readManySignals(2);
     //auto zeros = findZero(signals); 
     //print(zeros);
 #if 0
