@@ -131,9 +131,9 @@ void print( Signals total )
 int main()
 {
     auto signals = readManySignals(2);
-    auto zeros = findZero(signals); 
-    print(zeros);
-#if 1
+    //auto zeros = findZero(signals); 
+    //print(zeros);
+#if 0
     //ht6022be osc;
     std::ofstream out_ch1("signal_CH1.txt"), out_ch2("signal_CH2.txt"); 
     size_t j = 0;

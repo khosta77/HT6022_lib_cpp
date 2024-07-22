@@ -44,6 +44,34 @@
 extern uint8_t HT6022_Firmware[];
 extern uint8_t HT6022_AddressList[256];
 
+static std::pair<int, uint8_t> findDevice( libusb_device **DeviceList, const int& DEVICE_COUNT,
+                                           const int& VENDOR_ID, const int& MODEL )
+{
+    struct libusb_device_descriptor desc;
+    //int DeviceCount;
+    //int DeviceIterator;
+    //uint8_t address;
+
+    //int deviceIterator;
+    //DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
+    //if (DeviceCount <= 0) 
+      //  throw OscilloscopeException("Метод openDevice, подключенные девайсы отстутствуют.");
+
+    for( int deviceIterator = 0; deviceIterator < DEVICE_COUNT; ++deviceIterator )
+    {
+        uint8_t address = libusb_get_device_address(DeviceList[deviceIterator]);
+        if( HT6022_AddressList[address] == 0 )
+        {
+            if( libusb_get_device_descriptor( DeviceList[deviceIterator], &desc ) == 0 )  // VID и PID
+            {
+                if( ( desc.idVendor  == VENDOR_ID ) && ( desc.idProduct == MODEL ) )
+                    return std::pair<int, uint8_t>( deviceIterator, address);
+            }
+        }
+    }
+    return std::pair<int, uint8_t>( DEVICE_COUNT, 0 );
+}
+
 void oscilloscopes::hantek::ht6022be::init_usb()
 {
     if( libusb_init(nullptr) != 0 )
@@ -58,10 +86,13 @@ int oscilloscopes::hantek::ht6022be::firmwareUpload()
     unsigned int Value;
     int n;
 
+    // Метод системы очко...
     Dev_handle = libusb_open_device_with_vid_pid( nullptr, HT6022_FIRMWARE_VENDOR_ID, HT6022_MODEL );
     if( Dev_handle == 0 )
+    {
+        std::cout << "Dev_handle == nullptr" << std::endl;
         return -1;
-
+    }
     if( libusb_kernel_driver_active( Dev_handle, 0 ) == 1 )
     {
         if( libusb_detach_kernel_driver( Dev_handle, 0 ) != 0 )
@@ -113,11 +144,15 @@ void oscilloscopes::hantek::ht6022be::openDevice()
     int DeviceCount;
     int DeviceIterator;
     uint8_t Address;
-	
+// Вот это вставить выше	
     DeviceCount = libusb_get_device_list( nullptr, &DeviceList );
     if (DeviceCount <= 0) 
         throw OscilloscopeException("Метод openDevice, подключенные девайсы отстутствуют.");
 
+    auto AddIt = findDevice( DeviceList, DeviceCount, HT6022_VENDOR_ID, HT6022_MODEL );
+    DeviceIterator = AddIt.first;
+    Address = AddIt.second;
+#if 0
     for(DeviceIterator = 0; DeviceIterator < DeviceCount; DeviceIterator++)
     {
         Address = libusb_get_device_address (DeviceList[DeviceIterator]);
@@ -130,7 +165,9 @@ void oscilloscopes::hantek::ht6022be::openDevice()
             }
         }
     }
+#endif
 
+    std::cout << DeviceIterator << ' ' << DeviceCount << std::endl;
     if( DeviceIterator == DeviceCount )
     {
         libusb_free_device_list( DeviceList, 1 );
@@ -320,7 +357,7 @@ void oscilloscopes::hantek::ht6022be::init( HT6022_SRTypeDef SR, HT6022_IRTypeDe
 {
     init_usb();
     if( firmwareUpload() == 0 ) // Минимальная задержка при иницализации
-        std::this_thread::sleep_for(std::chrono::nanoseconds(2'000'000'000));
+        std::this_thread::sleep_for(std::chrono::nanoseconds(3'000'000'000));
     openDevice();
     setSampleRate(SR);
     setCH1InputRate(IR1);
