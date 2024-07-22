@@ -41,7 +41,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Добавление исполняемого файла с именем main.out
-add_executable(main.out ./project/main.cpp ./project/ht6022lib.cpp)
+add_executable(main.out ./project/main.cpp ./project/ht6022lib.cpp ./project/hantek6022.cpp)
 
 
 # Включение заголовочных файлов и библиотек libusb
