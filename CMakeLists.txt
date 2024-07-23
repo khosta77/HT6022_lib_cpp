@@ -29,8 +29,10 @@ if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
     )
     message("-- build for${RASPBERRY_PI_INFO}")
 
-    find_package(WiringPi REQUIRED)
-    include_directories(${WIRINGPI_INCLUDE_DIRS})
+    include_directories(/usr/local/include)
+    link_directories(/usr/local/lib)
+    set(WIRINGPI_LIBRARIES wiringPi)
+
     set(ENV{PKG_CONFIG_PATH} "/usr/lib/arm-linux-gnueabihf/pkgconfig")
     # Использование pkg-config для поиска пакета libusb
     find_package(PkgConfig REQUIRED)
