@@ -2,179 +2,102 @@
 //#include "gnuplot.h"
 #include <algorithm>
 #include <iomanip>
-
-#if 0
-void plotgnuplot()
-{
-    GnuplotPipe gp;
-	gp.sendLine("set title 'Line'");
-	gp.sendLine("set xlabel 'x'");
-	gp.sendLine("set ylabel 'y'");
-
-	gp.sendLine("set grid");
-	gp.sendLine("set key below center horizontal noreverse enhanced autotitle box dashtype solid");
-	gp.sendLine("set tics out nomirror");
-	gp.sendLine("set border 3 front linetype black linewidth 1.0 dashtype solid");
-
-	gp.sendLine("set yrange [-127:127]");
-	//gp.sendLine("set xrange [7000:9000]");
-	//gp.sendLine("set xtics 1, .5, 5");
-	//gp.sendLine("set mxtics 1");
-	gp.sendLine("set style line 1 linecolor rgb '#0060ad' linetype 1 linewidth 1");
-
-	gp.sendLine("set terminal pngcairo enhanced font 'Arial,12' size 1600,1200");
-	gp.sendLine("set output 'output.png'");
-	gp.sendLine("plot './signal_CH1.txt' using 1:2 with lines linestyle 1 title 'data',\\");
-	gp.sendLine("	'' using 1:3 with lines linestyle 2 title 'line2'");
-}
+#include <thread>
+#include <atomic>
+#ifdef RASPBERRY_PI
+#include <wiringPi.h>
 #endif
 
-//#define CH1 0.914306640625
+#define CH1_CALIBRATION 0.914306640
+#define CH2_CALIBRATION 9.245046616
 
-//using Signal = std::vector<int>;
-//using Signals = std::vector<Signal>;
-
-#if 0
-Signals readManySignals( const size_t& size )
-{
-    Signals signals;
-    ht6022be osc;
-    for( size_t i = 0; i < size; ++i )
-        signals.push_back( osc.readFrame( HT6022_1KB, CH1 ).first );
-    return signals;
-}
-#endif
-#if 0
-void progressbar( int i, int start, int end, const int& barSize = 70 )
-{
-    float progress = ( (float)i / (float)end );
-    int pos = barSize * progress;
-    std::cout << "[";
-    for( int j = 0; j < barSize; j++ )
-    {
-        if( j < pos )
-            std::cout << "=";
-        else if( j == pos )
-            std::cout << ">";
-        else
-            std::cout << " ";
-    }
-    std::cout << "] " << ((int)( progress * 100 )) << " %\r";
-    std::cout.flush();
-}
-
-
-Signals findZero( Signals signals )
-{
-    const size_t size = signals[0].size();
-    Signals total;
-    for( size_t i = 0; i < size; ++i )
-    {
-        Signal line;
-        progressbar( i, 0, size );
-        size_t count = 0;
-        for( size_t j = i; j < size; ++j )
-        {
-            for( size_t k = 0; k < ( size - i ); ++k )
-            {
-                if( ( signals[0][j] - signals[1][k] ) == 0 )
-                {
-                    ++count;
-                }
-                else
-                {
-                    if( count == 0 )
-                        continue;
-                    line.push_back(count);
-                    count = 0;
-                }
-            }
-        }
-        total.push_back(line);
-    }
-    progressbar( size, 0, size );
-    std::cout << std::endl;
-    return total;
-}
-
-size_t sizeZero( const Signal& line)
-{
-    size_t size = 0;
-    for( auto& it : line )
-    {
-        if( it == 0 )
-            ++size;
-    }
-    return size;
-}
-
-int fmax( const Signal& line )
-{
-    if( line.size() == 0 )
-        return -1;
-    int max = line[0];
-    
-    for( size_t i = 1; i < line.size(); ++i )
-    {
-        if( line[i] > max )
-            max = line[i];
-    }
-
-    return max;
-}
-
-void print( Signals total )
-{
-    for( size_t i = 0; i < total.size(); ++i )
-    {
-        std::cout << std::setw(6) << i << "|" << std::setw(6) << fmax(total[i]) << std::endl;
-    }
-}
-#endif
 using namespace oscilloscopes::hantek;
-
 using HT6022 = oscilloscopes::hantek::Hantek6022;
+using oscilloscopes::OscSigframe;
+using oscilloscopes::OscSignal;
+
+std::atomic<bool> done(false);
+
+class Moderator
+{
+private:
+    oscilloscopes::Oscilloscope *_oscilloscope;
+    const size_t _memory;
+
+    OscSigframe read( const size_t& Memory )
+    {
+        return _oscilloscope->getSignalFrame(Memory);
+    }
+
+    OscSigframe downSignal( OscSigframe osf, const size_t& channelSize, const int& down = 127,
+                            const std::vector<float>& CHx_CALIBRATION = { CH1_CALIBRATION,
+                            CH2_CALIBRATION } )
+    {
+        for( size_t i = 0; i < channelSize; ++i )
+        {
+            for( size_t j = 0; j < osf[i]._signalSize; ++j )
+                osf[i]._signal[j] -= ( down + CHx_CALIBRATION[i] );
+        }
+        return osf;
+    }
+
+    /** @brief Среднее значение сигнала
+     * */
+    double mean( const OscSignal& signal )
+    {
+        double avg = 0.0;
+        for( auto& it : signal._signal )
+            avg += it;
+        return ( avg / signal._signalSize );
+    }
+
+    static void delay( const size_t& time )
+    {
+        std::this_thread::sleep_for(std::chrono::nanoseconds(time));
+        done = true;
+    }
+public:
+    Moderator( oscilloscopes::Oscilloscope *osc, const size_t& mem ) : _oscilloscope(osc), _memory(mem)
+    {
+#ifdef RASPBERRY_PI
+        wiringPiSetup();
+        pinMode(18, OUTPUT);
+        digitalWrite(18, HIGH);
+#endif
+    }
+    ~Moderator() {}
+
+    void run( [[ maybe_unused ]] const size_t& wait )
+    {
+        
+        std::thread t( delay, 5'000'000'000 );
+
+#ifdef RASPBERRY_PI
+        digitalWrite(18, HIGH);
+#endif
+
+        while(!done){}
+
+#ifdef RASPBERRY_PI
+        digitalWrite(18, HIGH);
+#endif
+        // Включить другой контакт
+        t.join();
+
+        auto df = read(_memory);
+        df = downSignal( df, 2 ); 
+        std::cout << df[0]._signalSize << std::endl;
+    }
+};
 
 int main()
 {
-    Hantek6022 oscilloscope;
-    auto df = oscilloscope.getSignalFrame(HT6022::_8KB);
-    auto CH1 = df[0];
-    std::cout << CH1._signalSize << ' ' << CH1._signal.size() << std::endl;
-    for( size_t i = 0; i < CH1._signalSize; ++i )
-        std::cout << CH1._signal[i] << ' ';
-    std::cout << std::endl;
-    //auto signals = readManySignals(2);
-    //auto zeros = findZero(signals); 
-    //print(zeros);
-#if 0
-    //ht6022be osc;
-    std::ofstream out_ch1("signal_CH1.txt"), out_ch2("signal_CH2.txt"); 
-    size_t j = 0;
-    for( auto signal : signals )
-    {
-        //auto signal = osc.readFrame( HT6022_1KB, CH1 );
-
-
-        for( size_t i = 0; i < signal.size(); ++i, ++j )
-		{
-            out_ch1 << ( j ) << ' ' << ((int)signal[i]) << std::endl;
-		    if( i > ( signal.size() - 3 ) )
-			//{
-			//	out_ch1 << ' ' << -127;
-				std::cout << j << std::endl;
-			//}
-			//else
-			//	out_ch1 << ' ' << 1000;
-			//out_ch1 << std::endl;
-		}
-		//for( auto it : signal.second )
-        //    out_ch2 << ((int)it) << ' ';
-    }
-    out_ch1.close();
-    out_ch2.close();
-	//plotgnuplot();
+#if 1
+    Hantek6022 A;
+    Moderator moderator( &A, HT6022::_1MB );
+    moderator.run(5'000'000'000);
 #endif
     return 0;
 }
+
 
