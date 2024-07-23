@@ -51,7 +51,7 @@ private:
         return ( avg / signal._signalSize );
     }
 
-    static void delay( const size_t& time )
+    static void delay( const long long int& time )
     {
         std::this_thread::sleep_for(std::chrono::nanoseconds(time));
         done = true;
@@ -61,28 +61,28 @@ public:
     {
 #ifdef RASPBERRY_PI
         wiringPiSetup();
-        pinMode(18, OUTPUT);
-        digitalWrite(18, HIGH);
+        pinMode(26, OUTPUT);
+        digitalWrite(26, LOW);
+        pinMode(27, OUTPUT);
+        digitalWrite(27, LOW);
 #endif
     }
     ~Moderator() {}
 
-    void run( [[ maybe_unused ]] const size_t& wait )
+    void run( [[ maybe_unused ]] const long long int& wait )
     {
         
         std::thread t( delay, 5'000'000'000 );
 
 #ifdef RASPBERRY_PI
-        digitalWrite(18, HIGH);
+        digitalWrite(26, HIGH);
 #endif
-
+        t.join();
         while(!done){}
 
 #ifdef RASPBERRY_PI
-        digitalWrite(18, HIGH);
+        digitalWrite(27, HIGH);
 #endif
-        // Включить другой контакт
-        t.join();
 
         auto df = read(_memory);
         df = downSignal( df, 2 ); 
@@ -92,11 +92,9 @@ public:
 
 int main()
 {
-#if 1
     Hantek6022 A;
     Moderator moderator( &A, HT6022::_1MB );
     moderator.run(5'000'000'000);
-#endif
     return 0;
 }
 
