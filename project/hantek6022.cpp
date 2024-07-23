@@ -188,6 +188,7 @@ void oscilloscopes::hantek::Hantek6022::init( const size_t& SR, const size_t& IL
     if( firmwareUpload() == 0 )  // Минимальная задержка при иницализации
         std::this_thread::sleep_for(std::chrono::nanoseconds(5'000'000'000));
     openDevice();
+
     _oscSignal[0] = oscilloscopes::OscSignal();
     _oscSignal[1] = oscilloscopes::OscSignal();
 
