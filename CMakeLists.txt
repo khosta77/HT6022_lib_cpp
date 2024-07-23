@@ -29,6 +29,8 @@ if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
     )
     message("-- build for${RASPBERRY_PI_INFO}")
 
+    find_package(WiringPi REQUIRED)
+    include_directories(${WIRINGPI_INCLUDE_DIRS})
     set(ENV{PKG_CONFIG_PATH} "/usr/lib/arm-linux-gnueabihf/pkgconfig")
     # Использование pkg-config для поиска пакета libusb
     find_package(PkgConfig REQUIRED)
@@ -36,12 +38,17 @@ if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
 endif()
 
 
-# Выставить версию с++17
-set(CMAKE_CXX_STANDARD 17)
+# Выставить версию с++20
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Добавление исполняемого файла с именем main.out
-add_executable(main.out ./project/main.cpp ./project/ht6022lib.cpp ./project/hantek6022.cpp)
+add_executable(
+    main.out
+    ./project/main.cpp
+    ./project/ht6022lib.cpp
+    ./project/hantek6022.cpp
+    )
 
 
 # Включение заголовочных файлов и библиотек libusb
@@ -52,4 +59,6 @@ endif()
 if(IS_THIS_RASPBERRY_PI STREQUAL "NAME=\"Raspbian GNU/Linux\"")
     include_directories(${LIBUSB_INCLUDE_DIRS})
     target_link_libraries(main.out ${LIBUSB_LIBRARIES})
+    target_link_libraries(main.out ${WIRINGPI_LIBRARIES})
+    add_compile_definitions(RASPBERRY_PI)
 endif()
