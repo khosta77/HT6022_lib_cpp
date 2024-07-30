@@ -128,11 +128,18 @@ namespace oscilloscopes
     {
     public:
         virtual ~Oscilloscope() {};
+        virtual size_t getChannelsSize() = 0;
 
         virtual void setSampleRate( const size_t& SR ) = 0;
+        virtual size_t getSampleRate() = 0;
+        virtual std::vector<size_t> getRangeSampleRate() = 0;
+
         virtual void setInputLevel( const uint8_t& CHx, const size_t& IL ) = 0;
+        virtual size_t getInputLevel( const uint8_t &CHx ) = 0;
+        virtual std::vector<size_t> getRangeInputLevel() = 0;
 
         virtual OscSigframe getSignalFrame( const size_t& FS ) = 0;
+        virtual std::vector<size_t> getRangeSignalFrame() = 0;
     };
 
 };  // oscilloscopes
