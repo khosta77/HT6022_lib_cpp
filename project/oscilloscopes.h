@@ -129,6 +129,7 @@ namespace oscilloscopes
     public:
         virtual ~Oscilloscope() {};
         virtual size_t getChannelsSize() = 0;
+        //virtual std::string whoAmI() = 0;
 
         virtual void setSampleRate( const size_t& SR ) = 0;
         virtual size_t getSampleRate() = 0;

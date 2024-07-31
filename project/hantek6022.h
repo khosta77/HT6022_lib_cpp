@@ -98,6 +98,8 @@ namespace oscilloscopes
 
             void close();
 
+            uint8_t setLevelForOscilloscope( const size_t& level );
+
         public:
             /** Конструктор
              *  @param SR - частота семплирования
@@ -115,9 +117,14 @@ namespace oscilloscopes
              *              * _2V  диапазон от -1V    до 1V
              *              * _1V  диапазон от -500mv до 500mv
              * */
-            Hantek6022( const size_t& SR = _4MSa, const size_t& IL1 = _1V, const size_t& IL2 = _1V );
+            Hantek6022( const size_t& SR = _4MSa, const size_t& IL1 = 1'000, const size_t& IL2 = 1'000 );
 
             ~Hantek6022();
+
+            size_t getChannelsSize() override { return 2; }
+
+            //std::string whoAmI() override { return std::string("Hantek 6022BE"); }
+
 
             /** @brief setSampleRate - задать частоту семплирования
              *  @param SR - значение частоты
@@ -132,6 +139,16 @@ namespace oscilloscopes
              * */
             void setSampleRate( const size_t& SR ) override;
 
+            size_t getSampleRate() override
+            {
+                return _oscSignal[0]._sampleRate;
+            }
+            
+            std::vector<size_t> getRangeSampleRate() override
+            {
+                return std::vector<size_t>{ 1'000, 2'000, 5'000, 10'000 };
+            }
+
 
             /** @brief setCH2InputRate - задать уровень для канал CH2
              *  @param CHx - номер канал:
@@ -144,6 +161,16 @@ namespace oscilloscopes
              *              * HT6022_1V  диапазон от -500mv до 500mv
              * */
             void setInputLevel( const uint8_t& CHx, const size_t& IL ) override;
+
+            size_t getInputLevel( const uint8_t &CHx ) override
+            {
+                return _oscSignal[CHx]._inputLevel;
+            }
+            
+            std::vector<size_t> getRangeInputLevel() override
+            {
+                return std::vector<size_t>{ _100KSa, _200KSa, _500KSa, _1MSa, _4MSa, _8MSa, _16MSa, _24MSa };
+            }
 
             /** @brief getSignalFrame - метод считывание данных из каналов
              *  @param FS - диапазаон считываемых значений
@@ -160,6 +187,11 @@ namespace oscilloscopes
              *              * HT6022_1MB
              * */
             OscSigframe getSignalFrame( const size_t& FS ) override;
+
+            std::vector<size_t> getRangeSignalFrame() override
+            {
+                return std::vector<size_t>{ _1KB, _2KB, _4KB, _8KB, _16KB, _32KB, _64KB, _128KB, _256KB, _512KB, _1MB };
+            }
 
         };  // Hantek6022
 

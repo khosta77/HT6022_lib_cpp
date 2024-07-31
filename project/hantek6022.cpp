@@ -203,6 +203,23 @@ void oscilloscopes::hantek::Hantek6022::close()
     libusb_exit(nullptr);
 }
 
+uint8_t oscilloscopes::hantek::Hantek6022::setLevelForOscilloscope( const size_t& level )
+{
+    switch( level )
+    {
+    case 1'000:
+        return _1V;
+    case 2'000:
+        return _2V;
+     case 5'000:
+        return _5V;
+     case 10'000:
+        return _10V;
+    };
+    throw InvalidParamOscilloscope("setLevelForOscilloscope");
+    return -1;
+}
+
 oscilloscopes::hantek::Hantek6022::Hantek6022( const size_t& SR, const size_t& IL1, const size_t& IL2 )
 {
     init( SR, IL1, IL2 );
@@ -230,7 +247,7 @@ void oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, const
 {
     THROW( ( ( ( CHx != 0 ) && ( CHx != 1 ) ) || ( _device._handle == nullptr ) ), "setInputLevel" );
 
-    uint8_t InputRange = IL;
+    uint8_t InputRange = setLevelForOscilloscope(IL);
     int r = libusb_control_transfer( _device._handle,
                                      ( (CHx) ? HT6022_IR1_REQUEST_TYPE : HT6022_IR2_REQUEST_TYPE ),
                                      ( (CHx) ? HT6022_IR1_REQUEST : HT6022_IR2_REQUEST ),

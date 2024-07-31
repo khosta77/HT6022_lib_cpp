@@ -14,31 +14,37 @@ using oscilloscopes::OscSignal;
 
 
 
-OscSigframe downSignal( OscSigframe osf, const size_t& channelSize, const int& down = 127,
-                        const std::vector<float>& CHx_CALIBRATION = { CH1_CALIBRATION,
-                        CH2_CALIBRATION } )
+std::vector<std::vector<float>> downSignal( OscSigframe osf, const size_t& channelSize,
+                                            const float& down = 127.0, const std::vector<float>&
+                                            CHx_CALIBRATION = { CH1_CALIBRATION, CH2_CALIBRATION } )
 {
+    std::vector<std::vector<float>> channels;
     for( size_t i = 0; i < channelSize; ++i )
     {
-        for( size_t j = 0; j < osf[i]._signalSize; ++j )
-            osf[i]._signal[j] -= ( down + CHx_CALIBRATION[i] );
+        std::vector<float> channel;
+        for( const auto& it:  osf[i]._signal )
+            channel.push_back( ( ((float)it) - down - CHx_CALIBRATION[i] ) );
+        channels.push_back(channel);
+        channel.clear();
     }
-    return osf;
+    return channels;
 }
 
-double mean( const OscSignal& signal )
+float mean( const std::vector<float>& signal )
 {
-    double avg = 0.0;
-    for( auto& it : signal._signal )
+    float avg = 0.0;
+    for( const auto& it : signal )
         avg += it;
-    return ( avg / signal._signalSize );
+    return ( avg / signal.size() );
 }
 
 int main()
 {
-    Hantek6022 oscilloscope;
-
-
+    Hantek6022 oscilloscope( HT6022::_4MSa, 5'000, 5'000 );
+    auto buffer = oscilloscope.getSignalFrame(HT6022::_1KB);
+    auto clearSignal = downSignal( buffer, 2 )[0];
+    for( const auto& it : clearSignal )
+        std::cout << it << ' ';
     return 0;
 }
 
