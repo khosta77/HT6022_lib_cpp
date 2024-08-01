@@ -40,11 +40,19 @@ float mean( const std::vector<float>& signal )
 
 int main()
 {
-    Hantek6022 oscilloscope( HT6022::_4MSa, 5'000, 5'000 );
-    auto buffer = oscilloscope.getSignalFrame(HT6022::_1KB);
-    auto clearSignal = downSignal( buffer, 2 )[0];
-    for( const auto& it : clearSignal )
-        std::cout << it << ' ';
+    try {
+        Hantek6022 oscilloscope( HT6022::_4MSa, 5'000, 5'000 );
+        auto buffer = oscilloscope.getSignalFrame(1000)[0]._signal;
+        for( const auto& it : buffer )
+            std::cout << it << ' ';
+    }
+    catch( std::exception& emsg )
+    {
+        std::cout << std::string(emsg.what()) << std::endl;
+    };
+    //auto clearSignal = downSignal( buffer, 2 )[0];
+    //for( const auto& it : clearSignal )
+    //    std::cout << it << ' ';
     return 0;
 }
 
