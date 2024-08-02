@@ -123,7 +123,7 @@ namespace oscilloscopes
 
             size_t getChannelsSize() override { return 2; }
 
-            //std::string whoAmI() override { return std::string("Hantek 6022BE"); }
+            std::string whoAmI() override { return std::string("Hantek 6022BE"); }
 
 
             /** @brief setSampleRate - задать частоту семплирования
