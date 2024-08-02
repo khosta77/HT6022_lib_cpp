@@ -146,7 +146,7 @@ namespace oscilloscopes
             
             std::vector<size_t> getRangeSampleRate() override
             {
-                return std::vector<size_t>{ 1'000, 2'000, 5'000, 10'000 };
+                return std::vector<size_t>{ _100KSa, _200KSa, _500KSa, _1MSa, _4MSa, _8MSa, _16MSa, _24MSa };
             }
 
 
@@ -169,7 +169,7 @@ namespace oscilloscopes
             
             std::vector<size_t> getRangeInputLevel() override
             {
-                return std::vector<size_t>{ _100KSa, _200KSa, _500KSa, _1MSa, _4MSa, _8MSa, _16MSa, _24MSa };
+                return std::vector<size_t>{ 1'000, 2'000, 5'000, 10'000 };
             }
 
             /** @brief getSignalFrame - метод считывание данных из каналов
