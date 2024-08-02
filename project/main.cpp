@@ -46,7 +46,7 @@ int main()
         for( const auto& it : buffer )
             std::cout << it << ' ';
     }
-    catch( std::exception& emsg )
+    catch( const std::exception& emsg )
     {
         std::cout << std::string(emsg.what()) << std::endl;
     };
