@@ -42,7 +42,7 @@ int main()
 {
     try {
         Hantek6022 oscilloscope( HT6022::_4MSa, 5'000, 5'000 );
-        auto buffer = oscilloscope.getSignalFrame(1000)[0]._signal;
+        auto buffer = oscilloscope.getSignalFrame(1024)[0]._signal;
         for( const auto& it : buffer )
             std::cout << it << ' ';
     }
