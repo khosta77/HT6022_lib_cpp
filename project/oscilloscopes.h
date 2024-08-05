@@ -119,7 +119,35 @@ namespace oscilloscopes
         size_t _signalSize;
         std::vector<uint16_t> _signal;
 
-        OscSignal() : _sampleRate(0), _inputLevel(0), _signalSize(0) {}
+        OscSignal() : _sampleRate(0), _inputLevel(0), _signalSize(0), _signal(0) {}
+
+        OscSignal( const OscSignal& rhs )
+        {
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            this->_signalSize = rhs._signalSize;
+            for( size_t i = 0; i < this->_signalSize; ++i )
+                this->_signal.push_back( rhs._signal[i] );
+        }
+
+        OscSignal& operator=( const OscSignal& rhs )
+        {
+            if( &rhs != this )
+            {
+                this->_sampleRate = rhs._sampleRate;
+                this->_inputLevel = rhs._inputLevel;
+                this->_signalSize = rhs._signalSize;
+                for( size_t i = 0; i < this->_signalSize; ++i )
+                    this->_signal.push_back( rhs._signal[i] );
+            }
+            return *this;
+        }
+
+        ~OscSignal()
+        {
+            if( !_signal.empty() )
+                _signal.clear();
+        }
     };
 
     using OscSigframe = std::map<uint8_t, OscSignal>;
