@@ -4,6 +4,7 @@
 #include "oscilloscopes.h"
 
 #include <libusb-1.0/libusb.h>
+#include "ht6022lib.h"//удалить позже
 
 namespace oscilloscopes
 {
@@ -125,7 +126,6 @@ namespace oscilloscopes
 
             std::string whoAmI() override { return std::string("Hantek 6022BE"); }
 
-
             /** @brief setSampleRate - задать частоту семплирования
              *  @param SR - значение частоты
              *              * HT6022_24MSa
@@ -191,6 +191,104 @@ namespace oscilloscopes
             std::vector<size_t> getRangeSignalFrame() override
             {
                 return std::vector<size_t>{ _1KB, _2KB, _4KB, _8KB, _16KB, _32KB, _64KB, _128KB, _256KB, _512KB, _1MB };
+            }
+
+            float getCoefficient( const size_t& mv )
+            {
+                switch( mv )
+                {
+                    case 1'000:
+                        return 25.0;
+                    case 2'000:
+                        return 12.5;
+                    case 5'000:
+                        return 6.25;
+                    case 10'000:
+                        return 3.125;
+                };
+                throw InvalidParamOscilloscope("getCoefficient");
+                return -1;
+            }
+
+            OscSignal getSignalFromTrigger( const uint8_t CHx, const float& level, const uint8_t comp )
+            {
+                const size_t DATA_SIZE = _16KB;
+                bool isTriggerSuccess = true;
+                bool lastRead = true;
+                size_t k = 0;
+                _oscSignal[CHx]._signal.clear();
+                while( ( isTriggerSuccess || lastRead ) )
+                {
+                    if( !isTriggerSuccess )
+                        lastRead = false;
+
+                    THROW( ( ( _device._handle == nullptr ) ), "" );
+
+                    uint8_t *data = new uint8_t[( sizeof(uint8_t) * DATA_SIZE * 2 )];
+                    THROW( ( data == nullptr ), "" );
+
+                    *data = HT6022_READ_CONTROL_DATA;
+                    int r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
+                                                     HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
+                                                     HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
+
+                    THROW( ( ( r >= 0 ) ? 0 : r), "", data );
+
+                    int nread;
+                    r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, ( DATA_SIZE * 2 ), &nread, 0 ); 
+
+                    THROW( ( ( r >= 0 ) ? 0 : r), "", data );
+                    THROW( ( ( nread != ( DATA_SIZE * 2 ) ) ? -1 : 0 ), "", data );
+
+                    uint8_t *data_temp = data;
+
+                    //auto control = std::pair<bool, size_t>( false, 0 );
+                    if( CHx == 1 )
+                        data_temp++;
+
+                    float coefficient = getCoefficient( _oscSignal[CHx]._inputLevel );
+                    
+                    const size_t STEP = 512;
+                    float buffer = 0.0;
+                    for( size_t i = 0; i < DATA_SIZE; ++i )
+                    {
+                        _oscSignal[CHx]._signal.push_back( ( ( (*data_temp) - 127.0 ) / coefficient ) );
+                        data_temp += 2;
+                        if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
+                        {
+                            if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 1 ) ) )
+                            {
+                                isTriggerSuccess = false;
+                                k = _oscSignal[CHx]._signal.size();
+                            }
+                            
+                            if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 2 ) ) )
+                            {
+                                buffer = _oscSignal[CHx]._signal.back();
+                            }
+
+                            if( ( ( _oscSignal[CHx]._signal.back() <= level ) && ( comp == 2 ) && ( buffer >= level ) ) )
+                            {
+                                isTriggerSuccess = false;
+                                k = _oscSignal[CHx]._signal.size();
+                            }
+                        }
+                    }
+
+                    if( isTriggerSuccess )
+                    {
+                        if( _oscSignal[CHx]._signal.size() > _1MB )
+                            _oscSignal[CHx]._signal.clear();
+                    }
+
+                    delete []data;
+                }
+
+                k -= ( ( _oscSignal[CHx]._signal.size() >= 1000 ) ? 1000 : ( _oscSignal[CHx]._signal.size() - 1 ) );
+
+                _oscSignal[CHx]._signal.erase( _oscSignal[CHx]._signal.begin(), _oscSignal[CHx]._signal.begin() + k );
+                _oscSignal[CHx]._signalSize = _oscSignal[CHx]._signal.size();
+                return _oscSignal[CHx];
             }
 
         };  // Hantek6022

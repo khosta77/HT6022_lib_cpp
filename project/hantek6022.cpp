@@ -256,7 +256,7 @@ void oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, const
                                      &InputRange, ( (CHx) ? HT6022_IR1_SIZE : HT6022_IR2_SIZE ), 0 );
 
     THROW( ( ( r >= 0 ) ? 0 : r), "setInputLevel" );
-    _oscSignal[CHx]._sampleRate = IL;
+    _oscSignal[CHx]._inputLevel= IL;
 }
 
 oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( const size_t& FS )
