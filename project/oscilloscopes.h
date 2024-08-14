@@ -117,7 +117,7 @@ namespace oscilloscopes
         size_t _sampleRate;
         size_t _inputLevel;
         size_t _signalSize;
-        std::vector<uint16_t> _signal;
+        std::vector<float> _signal;
 
         OscSignal() : _sampleRate(0), _inputLevel(0), _signalSize(0), _signal(0) {}
 
