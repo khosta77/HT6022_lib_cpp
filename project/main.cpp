@@ -12,8 +12,6 @@ using HT6022 = oscilloscopes::hantek::Hantek6022;
 using oscilloscopes::OscSigframe;
 using oscilloscopes::OscSignal;
 
-
-
 std::vector<std::vector<float>> downSignal( OscSigframe osf, const size_t& channelSize,
                                             const float& down = 127.0, const std::vector<float>&
                                             CHx_CALIBRATION = { CH1_CALIBRATION, CH2_CALIBRATION } )
@@ -40,19 +38,9 @@ float mean( const std::vector<float>& signal )
 
 int main()
 {
-    try {
-        Hantek6022 oscilloscope( HT6022::_4MSa, 5'000, 5'000 );
-        auto buffer = oscilloscope.getSignalFrame(1024)[0]._signal;
-        for( const auto& it : buffer )
-            std::cout << it << ' ';
-    }
-    catch( const std::exception& emsg )
-    {
-        std::cout << std::string(emsg.what()) << std::endl;
-    };
-    //auto clearSignal = downSignal( buffer, 2 )[0];
-    //for( const auto& it : clearSignal )
-    //    std::cout << it << ' ';
+    Hantek6022 oscilloscope( HT6022::_8MSa, 1'000, 1'000 );
+    auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 2 )._signal;
+    for( const auto& it : buffer ) std::cout << it << ' ';
     return 0;
 }
 
