@@ -38,9 +38,9 @@ float mean( const std::vector<float>& signal )
 
 int main()
 {
-    Hantek6022 oscilloscope( HT6022::_8MSa, 1'000, 1'000 );
+    Hantek6022 oscilloscope( HT6022::_8MSa, 1, 1 );
     auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 2 )._signal;
-    for( const auto& it : buffer ) std::cout << it << ' ';
+    //for( const auto& it : buffer ) std::cout << it << ' ';
     return 0;
 }
 
