@@ -57,9 +57,14 @@ namespace oscilloscopes
                 DeviceTypeDef() : _handle(nullptr), _address(0x00) {}
             };
 
+            std::mutex _usb_save;
+            std::mutex _usb_device;
             DeviceTypeDef _device;
 
+            std::mutex _oscSignal_save;
+            std::mutex _oscSignal_osc;
             OscSigframe _oscSignal;
+
 
             /** @brief init_usb - Инициализация usb
              * */
@@ -101,16 +106,11 @@ namespace oscilloscopes
 
             uint8_t setLevelForOscilloscope( const size_t& level );
 
-            /** @brief getCoefficient - метод для получения коэффициента расчета истенного размера 
-             *  @param v - текущее значение уровня 
-             * */
-            float getCoefficient( const size_t& v );
-
             /** @brief checkLevel - проверка корректный ли уровень на триггере установлен
              *  @param level - уровень
              *  @param CHx - канал
              * */
-            uint8_t checkLevel( const float& level, const uint8_t& CHx );
+            uint8_t checkLevel( const float& level, const size_t& inLevel );
 
         public:
             /** Конструктор
