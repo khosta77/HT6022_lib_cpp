@@ -268,7 +268,6 @@ size_t oscilloscopes::hantek::Hantek6022::setSampleRate( const size_t& SR )
         std::lock_guard<std::mutex> guard1( _usb_save, std::adopt_lock );
         {
             std::lock_guard<std::mutex> guard2( _usb_device, std::adopt_lock );
-            //std::lock( _usb_save, _usb_device );
 
             THROW( ( _device._handle == nullptr ), "setSampleRate" );
             uint8_t SampleRate = SR;
@@ -279,11 +278,9 @@ size_t oscilloscopes::hantek::Hantek6022::setSampleRate( const size_t& SR )
             THROW( ( ( r >= 0 ) ? 0 : r), "setSampleRate" );
         }
     }
-    //std::unlock( _usb_save, _usb_device );
 
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    //std::lock( _oscSignal_save, _oscSignal_osc );
 
     _oscSignal[0]._sampleRate = SR;
     _oscSignal[1]._sampleRate = SR;
@@ -294,7 +291,6 @@ const size_t oscilloscopes::hantek::Hantek6022::getSampleRate()
 {
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    //std::lock( _oscSignal_save, _oscSignal_osc );
 
     return _oscSignal[0]._sampleRate;
 }
@@ -310,7 +306,6 @@ size_t oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, con
         std::lock_guard<std::mutex> guard1( _usb_save, std::adopt_lock );
         {
             std::lock_guard<std::mutex> guard2( _usb_device, std::adopt_lock );
-            //std::lock( _usb_save, _usb_device );
 
             THROW( ( ( ( CHx != 0 ) && ( CHx != 1 ) ) || ( _device._handle == nullptr ) ), "setInputLevel" );
             uint8_t InputRange = setLevelForOscilloscope(IL);
@@ -324,11 +319,9 @@ size_t oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, con
             THROW( ( ( r >= 0 ) ? 0 : r), "setInputLevel" );
         }
     }
-    //std::unlock( _usb_save, _usb_device );
 
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    //std::lock( _oscSignal_save, _oscSignal_osc );
 
     _oscSignal[CHx]._inputLevel = IL;
     return _oscSignal[CHx]._inputLevel;
@@ -362,7 +355,6 @@ oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( co
         std::lock_guard<std::mutex> guard1( _usb_save, std::adopt_lock );
         {
             std::lock_guard<std::mutex> guard2( _usb_device, std::adopt_lock );
-            //std::lock( _usb_save, _usb_device );  // Опять защита
 
             THROW( ( ( _device._handle == nullptr ) ), "getSignalFrame" );
             *data = HT6022_READ_CONTROL_DATA;
@@ -378,7 +370,6 @@ oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( co
             THROW( ( ( nread != ( FS * 2 ) ) ? -1 : 0 ), "getSignalFrame", data );
         }
     }
-    //std::unlock( _usb_save, _usb_device );
 
     uint8_t *data_temp = data;
     std::vector<float> signalCh0, signalCh1;
@@ -391,7 +382,6 @@ oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( co
 
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    //std::lock( _oscSignal_save, _oscSignal_osc );
 
     _oscSignal[0]._signal = signalCh0;
     _oscSignal[1]._signal = signalCh1;
@@ -413,12 +403,10 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
         std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
         {
             std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-            //std::lock( _oscSignal_save, _oscSignal_osc );  // Защита
 
             inputLevel = _oscSignal[CHx]._inputLevel;
         }
     }
-    //std::unlock( _oscSignal_save, _oscSignal_osc );
 
     THROW( ( ( ( CHx != 0 ) && ( CHx != 2 ) ) || ( checkLevel( level, inputLevel ) )
                 || ( ( comp != 1 ) && ( comp != 2 ) ) ), "getSignalFromTrigger" );
@@ -450,7 +438,6 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
             std::lock_guard<std::mutex> guard1( _usb_save, std::adopt_lock );
             {
                 std::lock_guard<std::mutex> guard2( _usb_device, std::adopt_lock );
-                //std::lock( _usb_save, _usb_device );  // Опять защита
 
                 THROW( ( ( _device._handle == nullptr ) ), "getSignalFromTrigger" );
                 r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
@@ -466,7 +453,6 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
                 THROW( ( ( nread != ( DATA_SIZE * 2 ) ) ? -1 : 0 ), "getSignalFromTrigger", data );
             }
         }
-        //std::unlock( _usb_save, _usb_device );
 
         uint8_t *data_temp = data;
 
@@ -512,7 +498,6 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
 
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    //std::lock( _oscSignal_save, _oscSignal_osc );
 
     _oscSignal[CHx]._signal = signal;
     _oscSignal[CHx]._signalSize = _oscSignal[CHx]._signal.size();
