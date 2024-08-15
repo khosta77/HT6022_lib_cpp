@@ -1,6 +1,35 @@
 #include "hantek6022.h"
 #include "ht6022lib.h"
 
+static const std::vector<size_t> rangeSampleRate = std::vector<size_t>{
+    oscilloscopes::hantek::Hantek6022::_100KSa,
+    oscilloscopes::hantek::Hantek6022::_200KSa,
+    oscilloscopes::hantek::Hantek6022::_500KSa,
+    oscilloscopes::hantek::Hantek6022::_1MSa,
+    oscilloscopes::hantek::Hantek6022::_4MSa,
+    oscilloscopes::hantek::Hantek6022::_8MSa,
+    oscilloscopes::hantek::Hantek6022::_16MSa,
+    oscilloscopes::hantek::Hantek6022::_24MSa
+};
+
+static const std::vector<size_t> rangeInputLevel = std::vector<size_t>{ 1, 2, 5, 10 };
+
+static const std::vector<size_t> rangeSignalFrame = std::vector<size_t>{
+    oscilloscopes::hantek::Hantek6022::_1KB,
+    oscilloscopes::hantek::Hantek6022::_2KB,
+    oscilloscopes::hantek::Hantek6022::_4KB,
+    oscilloscopes::hantek::Hantek6022::_8KB,
+    oscilloscopes::hantek::Hantek6022::_16KB,
+    oscilloscopes::hantek::Hantek6022::_32KB,
+    oscilloscopes::hantek::Hantek6022::_64KB,
+    oscilloscopes::hantek::Hantek6022::_128KB,
+    oscilloscopes::hantek::Hantek6022::_256KB,
+    oscilloscopes::hantek::Hantek6022::_512KB,
+    oscilloscopes::hantek::Hantek6022::_1MB
+};
+
+static const std::string oscilloscopeInfo = std::string("Hantek 6022BE");
+
 static std::pair<int, uint8_t> findDevice( libusb_device **DeviceList, const int& DEVICE_COUNT,
                                            const int& VENDOR_ID, const int& MODEL )
 {
@@ -18,6 +47,18 @@ static std::pair<int, uint8_t> findDevice( libusb_device **DeviceList, const int
         }
     }
     return std::pair<int, uint8_t>( DEVICE_COUNT, 0 );
+}
+
+inline bool oscilloscopes::hantek::Hantek6022::isCurrentSize( const size_t& s ) const
+{
+    using HT = oscilloscopes::hantek::Hantek6022;
+    if( ( ( s == HT::_1KB) || ( s == HT::_2KB ) || ( s == HT::_4KB) || ( s == HT::_8KB)
+        || ( s == HT::_16KB) || ( s == HT::_32KB) || ( s == HT::_64KB) || ( s == HT::_128KB)
+        || ( s == HT::_256KB) || ( s == HT::_512KB) || ( s == HT::_1MB) ) )
+    {
+        return true;
+    }    
+    return false;
 }
 
 void oscilloscopes::hantek::Hantek6022::init_usb()
@@ -150,38 +191,6 @@ void oscilloscopes::hantek::Hantek6022::closeDevice()
     }
 }
 
-void oscilloscopes::hantek::Hantek6022::readData( uint8_t* CH1, uint8_t* CH2, const size_t& DS,
-                                                  size_t  TimeOut )
-{
-    THROW( ( ( _device._handle == nullptr ) || ( CH1 == nullptr ) || ( CH2 == nullptr ) ), "readData" );
-
-    uint8_t *data = new uint8_t[( sizeof(uint8_t) * DS * 2 )];
-    THROW( ( data == nullptr ), "readData" );
-
-    *data = HT6022_READ_CONTROL_DATA;
-    int r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
-                                     HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
-                                     HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
-
-    THROW( ( ( r >= 0 ) ? 0 : r), "readData", data );
-
-    int nread;
-    r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, ( DS * 2 ), &nread, TimeOut ); 
-
-    THROW( ( ( r >= 0 ) ? 0 : r), "readData", data );
-    THROW( ( ( nread != ( DS * 2 ) ) ? -1 : 0 ), "readData", data );
-
-    uint8_t *data_temp = data;
-    while(nread)
-    {
-        *CH1++ = *data_temp++;
-        *CH2++ = *data_temp++;
-        nread -= 2;
-    }
-
-    delete []data;
-}
-
 void oscilloscopes::hantek::Hantek6022::init( const size_t& SR, const size_t& IL1, const size_t& IL2 )
 {
     init_usb();
@@ -207,17 +216,48 @@ uint8_t oscilloscopes::hantek::Hantek6022::setLevelForOscilloscope( const size_t
 {
     switch( level )
     {
-    case 1'000:
+    case 1:
         return _1V;
-    case 2'000:
+    case 2:
         return _2V;
-     case 5'000:
+    case 5:
         return _5V;
-     case 10'000:
+    case 10:
         return _10V;
     };
     throw InvalidParamOscilloscope("setLevelForOscilloscope");
     return -1;
+}
+
+float oscilloscopes::hantek::Hantek6022::getCoefficient( const size_t& v )
+{
+    switch( v )
+    {
+    case 1:
+        return 25.0;
+    case 2:
+        return 12.5;
+    case 5:
+        return 6.25;
+    case 10:
+        return 3.125;
+    };
+    throw InvalidParamOscilloscope("getCoefficient");
+    return -1.0;
+}
+
+uint8_t oscilloscopes::hantek::Hantek6022::checkLevel( const float& level, const uint8_t& CHx )
+{
+    const size_t inLevel = _oscSignal[CHx]._inputLevel;
+    if( ( ( ( -5.0 < level ) && ( level < 5.0 )) && ( inLevel == 1 ) ) )
+        return 0;
+    if( ( ( ( -10.0 < level ) && ( level < 10.0 )) && ( inLevel == 2 ) ) )
+        return 0;
+    if( ( ( ( -25.0 < level ) && ( level < 25.0 )) && ( inLevel == 5 ) ) )
+        return 0;
+    if( ( ( ( -35.0 < level ) && ( level < 35.0 )) && ( inLevel == 10 ) ) )
+        return 0;
+    return 1;
 }
 
 oscilloscopes::hantek::Hantek6022::Hantek6022( const size_t& SR, const size_t& IL1, const size_t& IL2 )
@@ -230,7 +270,17 @@ oscilloscopes::hantek::Hantek6022::~Hantek6022()
     close();
 }
 
-void oscilloscopes::hantek::Hantek6022::setSampleRate( const size_t& SR )
+const size_t oscilloscopes::hantek::Hantek6022::getChannelsSize() const
+{
+    return 2;
+}
+
+const std::string oscilloscopes::hantek::Hantek6022::whoAmI() const
+{
+    return oscilloscopeInfo;
+}
+
+size_t oscilloscopes::hantek::Hantek6022::setSampleRate( const size_t& SR )
 {
     THROW( ( _device._handle == nullptr ), "setSampleRate" );
     uint8_t SampleRate = SR;
@@ -241,9 +291,20 @@ void oscilloscopes::hantek::Hantek6022::setSampleRate( const size_t& SR )
 
     _oscSignal[0]._sampleRate = SR;
     _oscSignal[1]._sampleRate = SR;
+    return _oscSignal[1]._sampleRate;
 }
 
-void oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, const size_t& IL )
+const size_t oscilloscopes::hantek::Hantek6022::getSampleRate()
+{
+    return _oscSignal[0]._sampleRate;
+}
+
+const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSampleRate() const
+{
+    return rangeSampleRate;
+}
+
+size_t oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, const size_t& IL )
 {
     THROW( ( ( ( CHx != 0 ) && ( CHx != 1 ) ) || ( _device._handle == nullptr ) ), "setInputLevel" );
 
@@ -256,28 +317,149 @@ void oscilloscopes::hantek::Hantek6022::setInputLevel( const uint8_t& CHx, const
                                      &InputRange, ( (CHx) ? HT6022_IR1_SIZE : HT6022_IR2_SIZE ), 0 );
 
     THROW( ( ( r >= 0 ) ? 0 : r), "setInputLevel" );
-    _oscSignal[CHx]._inputLevel= IL;
+    _oscSignal[CHx]._inputLevel = IL;
+    return _oscSignal[CHx]._inputLevel;
+}
+
+const size_t oscilloscopes::hantek::Hantek6022::getInputLevel( const uint8_t& CHx )
+{
+    THROW( ( ( ( CHx != 0 ) && ( CHx != 1 ) ) ), "getInputLevel" );
+    return _oscSignal[CHx]._inputLevel;
+}
+
+
+const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeInputLevel() const
+{
+    return rangeInputLevel;
 }
 
 oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( const size_t& FS )
 {
+    THROW( ( ( _device._handle == nullptr ) || isCurrentSize( FS ) ), "getSignalFrame" );
+    const float coefficient0 = getCoefficient( _oscSignal[0]._inputLevel );
+    const float coefficient1 = getCoefficient( _oscSignal[1]._inputLevel );
+
     _oscSignal[0]._signal.clear();
     _oscSignal[1]._signal.clear();
 
-    uint8_t *CH1 = new uint8_t[FS];
-    uint8_t *CH2 = new uint8_t[FS];
+    uint8_t *data = new uint8_t[( sizeof(uint8_t) * FS * 2 )];
 
-    readData( CH1, CH2, FS, 0 );
+    *data = HT6022_READ_CONTROL_DATA;
+    int r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
+                                     HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
+                                     HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
+    
+    THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFrame", data );
+
+    int nread;
+    r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, ( FS * 2 ), &nread, 0 );
+
+    THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFrame", data );
+    THROW( ( ( nread != ( FS * 2 ) ) ? -1 : 0 ), "getSignalFrame", data );
+
+    uint8_t *data_temp = data;
     for( size_t i = 0; i < FS; ++i )
     {
-        _oscSignal[0]._signal.push_back( ((int)CH1[i]) );
-        _oscSignal[1]._signal.push_back( ((int)CH2[i]) );
+        _oscSignal[0]._signal.push_back( ( ( (*data_temp++) - 127.0 ) / coefficient0 ) );
+        _oscSignal[1]._signal.push_back( ( ( (*data_temp++) - 127.0 ) / coefficient1 ) );
     }
+    delete []data;
 
     _oscSignal[0]._signalSize = FS;
     _oscSignal[1]._signalSize = FS;
-
     return _oscSignal;
+}
+
+const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame() const
+{
+    return rangeSignalFrame;
+}
+
+oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
+        const float& level, const uint8_t& comp )
+{
+    THROW( ( ( ( CHx != 0 ) && ( CHx != 2 ) ) || ( checkLevel( level, CHx ) ) || ( ( comp != 1 ) && ( comp != 2 ) ) ), "getSignalFromTrigger" );
+
+    const size_t DATA_SIZE = _16KB;
+    const size_t STEP = 512;
+
+    // Размер буфера, который дополнительно сохраняем после срабатывания программного триггера
+    const size_t BUFFER_SIGNAL_SIZE = 1000;
+
+    const float coefficient = getCoefficient( _oscSignal[CHx]._inputLevel );
+
+    size_t eraseSize = 0;  // длина удаляемого хвоста сигнал
+
+    bool isTriggerSuccess = true;
+    bool lastRead = true;
+    _oscSignal[CHx]._signal.clear();
+
+    while( ( isTriggerSuccess || lastRead ) )
+    {
+        if( !isTriggerSuccess )
+            lastRead = false;
+
+        THROW( ( ( _device._handle == nullptr ) ), "getSignalFromTrigger" );
+
+        uint8_t *data = new uint8_t[( sizeof(uint8_t) * DATA_SIZE * 2 )];
+
+        *data = HT6022_READ_CONTROL_DATA;
+        int r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
+                                         HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
+                                         HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
+
+        THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFromTrigger", data );
+
+        int nread;
+        r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, ( DATA_SIZE * 2 ), &nread, 0 ); 
+
+        THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFromTrigger", data );
+        THROW( ( ( nread != ( DATA_SIZE * 2 ) ) ? -1 : 0 ), "getSignalFromTrigger", data );
+
+        uint8_t *data_temp = data;
+
+        if( CHx == 1 )
+            data_temp++;
+
+        float buffer = 0.0;
+        for( size_t i = 0; i < DATA_SIZE; ++i )
+        {
+            _oscSignal[CHx]._signal.push_back( ( ( (*data_temp) - 127.0 ) / coefficient ) );
+            data_temp += 2;
+            if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
+            {
+                if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 1 ) ) )
+                {
+                    isTriggerSuccess = false;
+                    eraseSize = _oscSignal[CHx]._signal.size();
+                }
+        
+                if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 2 ) ) )
+                    buffer = _oscSignal[CHx]._signal.back();
+                
+                if( ( ( _oscSignal[CHx]._signal.back() <= level ) && ( comp == 2 ) && ( buffer >= level ) ) )
+                {
+                    isTriggerSuccess = false;
+                    eraseSize = _oscSignal[CHx]._signal.size();
+                }
+            }
+        }
+
+        if( isTriggerSuccess )
+        {
+            if( _oscSignal[CHx]._signal.size() > _1MB )
+                _oscSignal[CHx]._signal.clear();
+        }
+
+        delete []data;
+    }
+
+    eraseSize -= ( ( _oscSignal[CHx]._signal.size() >= BUFFER_SIGNAL_SIZE
+                   ) ? BUFFER_SIGNAL_SIZE : ( _oscSignal[CHx]._signal.size() - 1 ) );
+
+    _oscSignal[CHx]._signal.erase( _oscSignal[CHx]._signal.begin(), _oscSignal[CHx]._signal.begin() + eraseSize );
+    _oscSignal[CHx]._signalSize = _oscSignal[CHx]._signal.size();
+    return _oscSignal[CHx];
 }
 
 
