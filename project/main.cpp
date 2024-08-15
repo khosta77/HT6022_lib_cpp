@@ -4,28 +4,25 @@
 #include <thread>
 #include <atomic>
 
-#define CH1_CALIBRATION 0.914306640
-#define CH2_CALIBRATION 9.245046616
+#define CH1_CALIBRATION 0.0395708  // Это калибровочные значения
+#define CH2_CALIBRATION 0.3779261  
 
 using namespace oscilloscopes::hantek;
 using HT6022 = oscilloscopes::hantek::Hantek6022;
 using oscilloscopes::OscSigframe;
 using oscilloscopes::OscSignal;
 
-std::vector<std::vector<float>> downSignal( OscSigframe osf, const size_t& channelSize,
-                                            const float& down = 127.0, const std::vector<float>&
+std::atomic<bool> is;
+
+OscSigframe downSignal( OscSigframe osf, const size_t& channelSize, const std::vector<float>&
                                             CHx_CALIBRATION = { CH1_CALIBRATION, CH2_CALIBRATION } )
 {
-    std::vector<std::vector<float>> channels;
     for( size_t i = 0; i < channelSize; ++i )
     {
-        std::vector<float> channel;
-        for( const auto& it:  osf[i]._signal )
-            channel.push_back( ( ((float)it) - down - CHx_CALIBRATION[i] ) );
-        channels.push_back(channel);
-        channel.clear();
+        for( size_t j = 0; j < osf[i]._signalSize; ++j )
+            osf[i]._signal[j] -= CHx_CALIBRATION[i];
     }
-    return channels;
+    return osf;
 }
 
 float mean( const std::vector<float>& signal )
@@ -40,63 +37,86 @@ Hantek6022 oscilloscope( HT6022::_8MSa, 5, 1 );
 
 void testSetGetRangeInputLevel()
 {
-    const size_t channelSize = oscilloscope.getChannelsSize();
-    auto range = oscilloscope.getRangeInputLevel();
-    for( size_t channelI = 0; channelI < channelSize; ++channelI )
+    while( is )
     {
-        for( const auto& it : range )
+        const size_t channelSize = oscilloscope.getChannelsSize();
+        auto range = oscilloscope.getRangeInputLevel();
+        for( size_t channelI = 0; channelI < channelSize; ++channelI )
         {
-            size_t setValue = oscilloscope.setInputLevel( channelI, it );
-            size_t getValue = oscilloscope.getInputLevel( channelI );
-            if( ( ( it != setValue ) || ( it != getValue ) ) )
+            for( const auto& it : range )
             {
-                std::cout << "InputLevel: " << it << ' ' << setValue << ' ' << getValue << std::endl;
-                return;
+                size_t setValue = oscilloscope.setInputLevel( channelI, it );
+                size_t getValue = oscilloscope.getInputLevel( channelI );
+                if( ( ( it != setValue ) || ( it != getValue ) ) )
+                {
+                    std::cout << "InputLevel: " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                    return;
+                }
+                else
+                    std::cout << "InputLevel= " << it << ' ' << setValue << ' ' << getValue << std::endl;
             }
-            else
-                std::cout << "InputLevel= " << it << ' ' << setValue << ' ' << getValue << std::endl;
         }
     }
 }
 
 void testSetGetRangeSampleRate()
 {
-    const size_t channelSize = oscilloscope.getChannelsSize();
-    auto range = oscilloscope.getRangeSampleRate();
-    for( size_t channelI = 0; channelI < channelSize; ++channelI )
+    while( is )
     {
-        for( const auto& it : range )
+        const size_t channelSize = oscilloscope.getChannelsSize();
+        auto range = oscilloscope.getRangeSampleRate();
+        for( size_t channelI = 0; channelI < channelSize; ++channelI )
         {
-            size_t setValue = oscilloscope.setSampleRate( it );
-            size_t getValue = oscilloscope.getSampleRate();
-            if( ( ( it != setValue ) || ( it != getValue ) ) )
+            for( const auto& it : range )
             {
-                std::cout << "SampleRate: " << it << ' ' << setValue << ' ' << getValue << std::endl;
-                return;
+                size_t setValue = oscilloscope.setSampleRate( it );
+                size_t getValue = oscilloscope.getSampleRate();
+                if( ( ( it != setValue ) || ( it != getValue ) ) )
+                {
+                    std::cout << "SampleRate: " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                    return;
+                }
+                else
+                    std::cout << "SampleRate= " << it << ' ' << setValue << ' ' << getValue << std::endl;
             }
-            else
-                std::cout << "SampleRate= " << it << ' ' << setValue << ' ' << getValue << std::endl;
         }
     }
 }
 
 void testTriggerLevel()
 {
-    auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 2 )._signal;
+    auto buffer = oscilloscope.getSignalFromTrigger( 0, 2.7, 2 )._signal;
     for( const auto& it : buffer ) std::cout << it << ' ';
+    is = false;
+}
+
+void testReadFrame()
+{
+    while( is )
+    {
+        auto range = oscilloscope.getRangeSignalFrame();
+        for( const auto& it : range )
+        {
+            auto df = oscilloscope.getSignalFrame(it);
+            df = downSignal( df, 2 );
+            float meanCh0 = ( std::round( mean( df[0]._signal ) * 100 ) / 100 );
+            float meanCh1 = ( std::round( mean( df[1]._signal ) * 100 ) / 100 );
+            std::cout << ( meanCh0 == 0.0 ) << ' ' << ( meanCh1 == 0.0 ) << ' ' << it << std::endl; 
+        }
+    }
 }
 
 int main()
 {
-    //auto df = oscilloscope.getSignalFrame( HT6022::_8KB )[0]._signal;
-    //for( const auto& it : df ) std::cout << it << ' ';
-
-    //std::thread t0( testTriggerLevel );
+    is = true;
+    std::thread t0( testTriggerLevel );
     std::thread t1( testSetGetRangeInputLevel );
     std::thread t2( testSetGetRangeSampleRate );
-    //t0.join();
+    std::thread t3( testReadFrame );
+    t0.join();
     t1.join();
     t2.join();
+    t3.join();
     return 0;
 }
 
