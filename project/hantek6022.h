@@ -4,7 +4,6 @@
 #include "oscilloscopes.h"
 
 #include <libusb-1.0/libusb.h>
-#include "ht6022lib.h"//удалить позже
 
 namespace oscilloscopes
 {
@@ -27,6 +26,11 @@ namespace oscilloscopes
             static constexpr size_t _256KB = 0x00040000;  // 262144 Bytes
             static constexpr size_t _512KB = 0x00080000;  // 524288 Bytes
             static constexpr size_t _1MB   = 0x00100000;  // 1048576 Bytes
+
+            /** @brief isCurrentSize - проверка корректную ли величину мы хотим взять
+             *  @param s - размер, который проверяется
+             * */
+            inline bool isCurrentSize( const size_t& s ) const;
 
             // Частота сэмплирования
             static constexpr size_t _24MSa  = 0x30;  // 24MSa per channel
@@ -75,10 +79,6 @@ namespace oscilloscopes
              * */
             void closeDevice();
 
-            /** @brief readData - считать данные из каналов
-             * */
-            void readData( uint8_t* CH1, uint8_t* CH2, const size_t& DS, size_t TimeOut ); 
- 
             /** @brief init - инициализация осциллографа
              *  @param SR - частота семплирования
              *              * _24MSa
@@ -101,6 +101,17 @@ namespace oscilloscopes
 
             uint8_t setLevelForOscilloscope( const size_t& level );
 
+            /** @brief getCoefficient - метод для получения коэффициента расчета истенного размера 
+             *  @param v - текущее значение уровня 
+             * */
+            float getCoefficient( const size_t& v );
+
+            /** @brief checkLevel - проверка корректный ли уровень на триггере установлен
+             *  @param level - уровень
+             *  @param CHx - канал
+             * */
+            uint8_t checkLevel( const float& level, const uint8_t& CHx );
+
         public:
             /** Конструктор
              *  @param SR - частота семплирования
@@ -118,13 +129,13 @@ namespace oscilloscopes
              *              * _2V  диапазон от -1V    до 1V
              *              * _1V  диапазон от -500mv до 500mv
              * */
-            Hantek6022( const size_t& SR = _4MSa, const size_t& IL1 = 1'000, const size_t& IL2 = 1'000 );
+            Hantek6022( const size_t& SR = _4MSa, const size_t& IL1 = 1, const size_t& IL2 = 1 );
 
             ~Hantek6022();
 
-            size_t getChannelsSize() override { return 2; }
+            const size_t getChannelsSize() const override;
 
-            std::string whoAmI() override { return std::string("Hantek 6022BE"); }
+            const std::string whoAmI() const override;
 
             /** @brief setSampleRate - задать частоту семплирования
              *  @param SR - значение частоты
@@ -137,18 +148,11 @@ namespace oscilloscopes
              *              * HT6022_200KSa
              *              * HT6022_100KSa
              * */
-            void setSampleRate( const size_t& SR ) override;
+            size_t setSampleRate( const size_t& SR ) override;
 
-            size_t getSampleRate() override
-            {
-                return _oscSignal[0]._sampleRate;
-            }
+            const size_t getSampleRate() override;
             
-            std::vector<size_t> getRangeSampleRate() override
-            {
-                return std::vector<size_t>{ _100KSa, _200KSa, _500KSa, _1MSa, _4MSa, _8MSa, _16MSa, _24MSa };
-            }
-
+            const std::vector<size_t> getRangeSampleRate() const override;
 
             /** @brief setCH2InputRate - задать уровень для канал CH2
              *  @param CHx - номер канал:
@@ -160,17 +164,11 @@ namespace oscilloscopes
              *              * HT6022_2V  диапазон от -1V    до 1V
              *              * HT6022_1V  диапазон от -500mv до 500mv
              * */
-            void setInputLevel( const uint8_t& CHx, const size_t& IL ) override;
+            size_t setInputLevel( const uint8_t& CHx, const size_t& IL ) override;
 
-            size_t getInputLevel( const uint8_t &CHx ) override
-            {
-                return _oscSignal[CHx]._inputLevel;
-            }
-            
-            std::vector<size_t> getRangeInputLevel() override
-            {
-                return std::vector<size_t>{ 1'000, 2'000, 5'000, 10'000 };
-            }
+            const size_t getInputLevel( const uint8_t& CHx ) override;
+
+            const std::vector<size_t> getRangeInputLevel() const override;
 
             /** @brief getSignalFrame - метод считывание данных из каналов
              *  @param FS - диапазаон считываемых значений
@@ -188,108 +186,9 @@ namespace oscilloscopes
              * */
             OscSigframe getSignalFrame( const size_t& FS ) override;
 
-            std::vector<size_t> getRangeSignalFrame() override
-            {
-                return std::vector<size_t>{ _1KB, _2KB, _4KB, _8KB, _16KB, _32KB, _64KB, _128KB, _256KB, _512KB, _1MB };
-            }
+            const std::vector<size_t> getRangeSignalFrame() const override;
 
-            float getCoefficient( const size_t& mv )
-            {
-                switch( mv )
-                {
-                    case 1'000:
-                        return 25.0;
-                    case 2'000:
-                        return 12.5;
-                    case 5'000:
-                        return 6.25;
-                    case 10'000:
-                        return 3.125;
-                };
-                throw InvalidParamOscilloscope("getCoefficient");
-                return -1;
-            }
-
-            OscSignal getSignalFromTrigger( const uint8_t CHx, const float& level, const uint8_t comp )
-            {
-                const size_t DATA_SIZE = _16KB;
-                bool isTriggerSuccess = true;
-                bool lastRead = true;
-                size_t k = 0;
-                _oscSignal[CHx]._signal.clear();
-                while( ( isTriggerSuccess || lastRead ) )
-                {
-                    if( !isTriggerSuccess )
-                        lastRead = false;
-
-                    THROW( ( ( _device._handle == nullptr ) ), "" );
-
-                    uint8_t *data = new uint8_t[( sizeof(uint8_t) * DATA_SIZE * 2 )];
-                    THROW( ( data == nullptr ), "" );
-
-                    *data = HT6022_READ_CONTROL_DATA;
-                    int r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
-                                                     HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
-                                                     HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
-
-                    THROW( ( ( r >= 0 ) ? 0 : r), "", data );
-
-                    int nread;
-                    r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, ( DATA_SIZE * 2 ), &nread, 0 ); 
-
-                    THROW( ( ( r >= 0 ) ? 0 : r), "", data );
-                    THROW( ( ( nread != ( DATA_SIZE * 2 ) ) ? -1 : 0 ), "", data );
-
-                    uint8_t *data_temp = data;
-
-                    //auto control = std::pair<bool, size_t>( false, 0 );
-                    if( CHx == 1 )
-                        data_temp++;
-
-                    float coefficient = getCoefficient( _oscSignal[CHx]._inputLevel );
-                    
-                    const size_t STEP = 512;
-                    float buffer = 0.0;
-                    for( size_t i = 0; i < DATA_SIZE; ++i )
-                    {
-                        _oscSignal[CHx]._signal.push_back( ( ( (*data_temp) - 127.0 ) / coefficient ) );
-                        data_temp += 2;
-                        if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
-                        {
-                            if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 1 ) ) )
-                            {
-                                isTriggerSuccess = false;
-                                k = _oscSignal[CHx]._signal.size();
-                            }
-                            
-                            if( ( ( _oscSignal[CHx]._signal.back() >= level ) && ( comp == 2 ) ) )
-                            {
-                                buffer = _oscSignal[CHx]._signal.back();
-                            }
-
-                            if( ( ( _oscSignal[CHx]._signal.back() <= level ) && ( comp == 2 ) && ( buffer >= level ) ) )
-                            {
-                                isTriggerSuccess = false;
-                                k = _oscSignal[CHx]._signal.size();
-                            }
-                        }
-                    }
-
-                    if( isTriggerSuccess )
-                    {
-                        if( _oscSignal[CHx]._signal.size() > _1MB )
-                            _oscSignal[CHx]._signal.clear();
-                    }
-
-                    delete []data;
-                }
-
-                k -= ( ( _oscSignal[CHx]._signal.size() >= 1000 ) ? 1000 : ( _oscSignal[CHx]._signal.size() - 1 ) );
-
-                _oscSignal[CHx]._signal.erase( _oscSignal[CHx]._signal.begin(), _oscSignal[CHx]._signal.begin() + k );
-                _oscSignal[CHx]._signalSize = _oscSignal[CHx]._signal.size();
-                return _oscSignal[CHx];
-            }
+            OscSignal getSignalFromTrigger( const uint8_t& CHx, const float& level, const uint8_t& comp ) override;
 
         };  // Hantek6022
 
