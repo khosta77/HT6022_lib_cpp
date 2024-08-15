@@ -36,11 +36,67 @@ float mean( const std::vector<float>& signal )
     return ( avg / signal.size() );
 }
 
+Hantek6022 oscilloscope( HT6022::_8MSa, 5, 1 );
+
+void testSetGetRangeInputLevel()
+{
+    const size_t channelSize = oscilloscope.getChannelsSize();
+    auto range = oscilloscope.getRangeInputLevel();
+    for( size_t channelI = 0; channelI < channelSize; ++channelI )
+    {
+        for( const auto& it : range )
+        {
+            size_t setValue = oscilloscope.setInputLevel( channelI, it );
+            size_t getValue = oscilloscope.getInputLevel( channelI );
+            if( ( ( it != setValue ) || ( it != getValue ) ) )
+            {
+                std::cout << "InputLevel: " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                return;
+            }
+            else
+                std::cout << "InputLevel= " << it << ' ' << setValue << ' ' << getValue << std::endl;
+        }
+    }
+}
+
+void testSetGetRangeSampleRate()
+{
+    const size_t channelSize = oscilloscope.getChannelsSize();
+    auto range = oscilloscope.getRangeSampleRate();
+    for( size_t channelI = 0; channelI < channelSize; ++channelI )
+    {
+        for( const auto& it : range )
+        {
+            size_t setValue = oscilloscope.setSampleRate( it );
+            size_t getValue = oscilloscope.getSampleRate();
+            if( ( ( it != setValue ) || ( it != getValue ) ) )
+            {
+                std::cout << "SampleRate: " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                return;
+            }
+            else
+                std::cout << "SampleRate= " << it << ' ' << setValue << ' ' << getValue << std::endl;
+        }
+    }
+}
+
+void testTriggerLevel()
+{
+    auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 2 )._signal;
+    for( const auto& it : buffer ) std::cout << it << ' ';
+}
+
 int main()
 {
-    Hantek6022 oscilloscope( HT6022::_8MSa, 1, 1 );
-    auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 2 )._signal;
-    //for( const auto& it : buffer ) std::cout << it << ' ';
+    //auto df = oscilloscope.getSignalFrame( HT6022::_8KB )[0]._signal;
+    //for( const auto& it : df ) std::cout << it << ' ';
+
+    //std::thread t0( testTriggerLevel );
+    std::thread t1( testSetGetRangeInputLevel );
+    std::thread t2( testSetGetRangeSampleRate );
+    //t0.join();
+    t1.join();
+    t2.join();
     return 0;
 }
 
