@@ -156,19 +156,22 @@ namespace oscilloscopes
     {
     public:
         virtual ~Oscilloscope() {};
-        virtual size_t getChannelsSize() = 0;
-        virtual std::string whoAmI() = 0;
+        virtual const size_t getChannelsSize() const = 0;
+        virtual const std::string whoAmI() const = 0;
 
-        virtual void setSampleRate( const size_t& SR ) = 0;
-        virtual size_t getSampleRate() = 0;
-        virtual std::vector<size_t> getRangeSampleRate() = 0;
+        virtual size_t setSampleRate( const size_t& ) = 0;
+        virtual const size_t getSampleRate() = 0;
+        virtual const std::vector<size_t> getRangeSampleRate() const = 0;
 
-        virtual void setInputLevel( const uint8_t& CHx, const size_t& IL ) = 0;
-        virtual size_t getInputLevel( const uint8_t &CHx ) = 0;
-        virtual std::vector<size_t> getRangeInputLevel() = 0;
+        virtual size_t setInputLevel( const uint8_t&, const size_t& ) = 0;
+        virtual const size_t getInputLevel( const uint8_t& ) = 0;
+        virtual const std::vector<size_t> getRangeInputLevel() const = 0;
 
-        virtual OscSigframe getSignalFrame( const size_t& FS ) = 0;
-        virtual std::vector<size_t> getRangeSignalFrame() = 0;
+        virtual OscSigframe getSignalFrame( const size_t& ) = 0;
+        virtual const std::vector<size_t> getRangeSignalFrame() const = 0;
+
+        virtual OscSignal getSignalFromTrigger( const uint8_t&, const float&, const uint8_t& ) = 0;
+
     };
 
 };  // oscilloscopes
