@@ -33,7 +33,7 @@ float mean( const std::vector<float>& signal )
     return ( avg / signal.size() );
 }
 
-Hantek6022 oscilloscope( HT6022::_8MSa, 5, 1 );
+Hantek6022 oscilloscope( 8'000, 1, 1 );
 
 void testSetGetRangeInputLevel()
 {
@@ -53,7 +53,9 @@ void testSetGetRangeInputLevel()
                     return;
                 }
                 else
-                    std::cout << "InputLevel= " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                {
+                    std::this_thread::sleep_for( std::chrono::nanoseconds(50) );
+                }
             }
         }
     }
@@ -77,7 +79,9 @@ void testSetGetRangeSampleRate()
                     return;
                 }
                 else
-                    std::cout << "SampleRate= " << it << ' ' << setValue << ' ' << getValue << std::endl;
+                {
+                    std::this_thread::sleep_for( std::chrono::nanoseconds(50) );
+                }
             }
         }
     }
@@ -85,9 +89,20 @@ void testSetGetRangeSampleRate()
 
 void testTriggerLevel()
 {
-    auto buffer = oscilloscope.getSignalFromTrigger( 0, 2.7, 2 )._signal;
-    for( const auto& it : buffer ) std::cout << it << ' ';
-    is = false;
+    std::fstream fout("signal2.txt");
+    while( is )
+    {
+        oscilloscope.onTrigger();
+        auto buffer = oscilloscope.getSignalFromTrigger( 0, 1.7, 1 )._signal;
+        if( fout.is_open() )
+        {
+            for( const auto& it : buffer )
+                fout << it << ' ';
+            fout.close();
+        }
+        std::cout << "getSignalFromTrigger: " << buffer.size() << std::endl;
+        std::this_thread::sleep_for( std::chrono::nanoseconds(50) );
+    }
 }
 
 void testReadFrame()
@@ -101,8 +116,9 @@ void testReadFrame()
             df = downSignal( df, 2 );
             float meanCh0 = ( std::round( mean( df[0]._signal ) * 100 ) / 100 );
             float meanCh1 = ( std::round( mean( df[1]._signal ) * 100 ) / 100 );
-            std::cout << ( meanCh0 == 0.0 ) << ' ' << ( meanCh1 == 0.0 ) << ' ' << it << std::endl; 
+            std::cout << "getRangeSignalFrame: " << ( meanCh0 == 0.0 ) << ' ' << ( meanCh1 == 0.0 ) << ' ' << it << std::endl; 
         }
+        std::this_thread::sleep_for( std::chrono::nanoseconds(50) );
     }
 }
 
@@ -110,12 +126,12 @@ int main()
 {
     is = true;
     std::thread t0( testTriggerLevel );
-    std::thread t1( testSetGetRangeInputLevel );
-    std::thread t2( testSetGetRangeSampleRate );
+    //std::thread t1( testSetGetRangeInputLevel );
+    //std::thread t2( testSetGetRangeSampleRate );
     std::thread t3( testReadFrame );
     t0.join();
-    t1.join();
-    t2.join();
+    //t1.join();
+    //t2.join();
     t3.join();
     return 0;
 }
