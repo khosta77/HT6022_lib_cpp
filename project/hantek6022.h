@@ -65,6 +65,8 @@ namespace oscilloscopes
             std::mutex _oscSignal_osc;
             OscSigframe _oscSignal;
 
+            std::atomic<bool> triggerMustWork;
+            std::atomic<bool> userWantReadFrameSignal;
 
             /** @brief init_usb - Инициализация usb
              * */
@@ -104,7 +106,13 @@ namespace oscilloscopes
 
             void close();
 
+            /** @brief setLevelForOscilloscope - проверить значения масштаба по y
+             * */
             uint8_t setLevelForOscilloscope( const size_t& level );
+
+            /** @brief setScaleForOscilloscope - проверить значение масштаба по x
+             * */
+            uint8_t setScaleForOscilloscope( const size_t& scale );
 
             /** @brief checkLevel - проверка корректный ли уровень на триггере установлен
              *  @param level - уровень
@@ -129,12 +137,16 @@ namespace oscilloscopes
              *              * _2V  диапазон от -1V    до 1V
              *              * _1V  диапазон от -500mv до 500mv
              * */
-            Hantek6022( const size_t& SR = _4MSa, const size_t& IL1 = 1, const size_t& IL2 = 1 );
+            Hantek6022( const size_t& SR = 4'000, const size_t& IL1 = 1, const size_t& IL2 = 1 );
 
             ~Hantek6022();
 
+            /** @brief getChannelsSize - получить колличество каналов, у осциллографа
+             * */
             const size_t getChannelsSize() const override;
 
+            /** @brief whoAmI - получить информацию о осциллографе, для человека
+             * */
             const std::string whoAmI() const override;
 
             /** @brief setSampleRate - задать частоту семплирования
@@ -150,8 +162,12 @@ namespace oscilloscopes
              * */
             size_t setSampleRate( const size_t& SR ) override;
 
+            /** @getSampleRate - получить текущее значения частоты сэмплирования
+             * */
             const size_t getSampleRate() override;
             
+            /** @getRangeSampleRate - получить диапазон значений сэмплирования
+             * */
             const std::vector<size_t> getRangeSampleRate() const override;
 
             /** @brief setCH2InputRate - задать уровень для канал CH2
@@ -166,8 +182,13 @@ namespace oscilloscopes
              * */
             size_t setInputLevel( const uint8_t& CHx, const size_t& IL ) override;
 
+            /** @brief getInputLevel - получить текущее значение уровня
+             *  @param CHx - канал
+             * */
             const size_t getInputLevel( const uint8_t& CHx ) override;
 
+            /** @brief getRangeInputLevel - получить диапазон значений уровня
+             * */
             const std::vector<size_t> getRangeInputLevel() const override;
 
             /** @brief getSignalFrame - метод считывание данных из каналов
@@ -186,9 +207,25 @@ namespace oscilloscopes
              * */
             OscSigframe getSignalFrame( const size_t& FS ) override;
 
+            /** @brief getRangeSignalFrame - получить диапазон значений для размеров
+             * */
             const std::vector<size_t> getRangeSignalFrame() const override;
 
+            /** @brief getSignalFromTrigger - выполнить установку триггера
+             *  @param CHx   - номер канал, начиная с 0-я
+             *  @param level - уровень срабатывания
+             *  @param comp  - 1 - возврастающий
+             *                 2 - убывающий
+             * */
             OscSignal getSignalFromTrigger( const uint8_t& CHx, const float& level, const uint8_t& comp ) override;
+
+            /** @brief onTrigger - включить триггер
+             * */
+            const void onTrigger() override;
+
+            /** @brief offTrigger - выключить триггер
+             * */
+            const void offTrigger() override;
 
         };  // Hantek6022
 
