@@ -172,6 +172,8 @@ namespace oscilloscopes
         virtual const std::vector<size_t> getRangeSignalFrame() const = 0;
 
         virtual OscSignal getSignalFromTrigger( const uint8_t&, const float&, const uint8_t& ) = 0;
+        virtual const void onTrigger() = 0;
+        virtual const void offTrigger() = 0;
 
     };
 
