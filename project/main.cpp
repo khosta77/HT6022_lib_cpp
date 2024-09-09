@@ -7,11 +7,12 @@
 #define CH1_CALIBRATION 0.0395708  // Это калибровочные значения
 #define CH2_CALIBRATION 0.3779261  
 
+
 using namespace oscilloscopes::hantek;
 using HT6022 = oscilloscopes::hantek::Hantek6022;
 using oscilloscopes::OscSigframe;
 using oscilloscopes::OscSignal;
-
+#if 0
 std::atomic<bool> is;
 
 OscSigframe downSignal( OscSigframe osf, const size_t& channelSize, const std::vector<float>&
@@ -121,9 +122,13 @@ void testReadFrame()
         std::this_thread::sleep_for( std::chrono::nanoseconds(50) );
     }
 }
+#endif
+Hantek6022 oscilloscope( 8'000, 1, 1 );
 
 int main()
 {
+
+#if 0
     is = true;
     std::thread t0( testTriggerLevel );
     //std::thread t1( testSetGetRangeInputLevel );
@@ -133,6 +138,7 @@ int main()
     //t1.join();
     //t2.join();
     t3.join();
+#endif
     return 0;
 }
 
