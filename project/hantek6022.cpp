@@ -419,6 +419,7 @@ const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame
 oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
         const int& level, const int& comp )
 {
+    //std::cout << ">" << ((int)CHx) << ' ' << level << 
     size_t inputLevel = 0;
     {
         std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
@@ -429,8 +430,8 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
         }
     }
 
-    THROW( ( ( ( CHx != 0 ) && ( CHx != 2 ) ) || ( checkLevel( level, inputLevel ) )
-                || ( ( comp != 1 ) && ( comp != 2 ) ) ), "getSignalFromTrigger" );
+    //THROW( ( ( ( CHx != 0 ) && ( CHx != 2 ) ) || ( checkLevel( level, inputLevel ) )
+    //            || ( ( comp != 1 ) && ( comp != 2 ) ) ), "getSignalFromTrigger" );
 
 
     const size_t DATA_SIZE = _16KB;
