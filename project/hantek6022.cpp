@@ -484,7 +484,7 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
         if( CHx == 1 )
             data_temp++;
 
-        int intLevel = static_cast<int>( level * 25.0 );
+        int intLevel = static_cast<int>( level );
         int buffer = 0;
         for( size_t i = 0; i < DATA_SIZE; ++i )
         {
