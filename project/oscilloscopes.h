@@ -118,7 +118,7 @@ namespace oscilloscopes
         size_t _sampleRate;
         size_t _inputLevel;
         size_t _signalSize;
-        std::vector<int8_t> _signal;
+        std::vector<int> _signal;
 
         OscSignal() : _sampleRate(0), _inputLevel(0), _signalSize(0), _signal(0) {}
 
@@ -126,21 +126,47 @@ namespace oscilloscopes
         {
             this->_sampleRate = rhs._sampleRate;
             this->_inputLevel = rhs._inputLevel;
-            this->_signalSize = rhs._signalSize;
-            for( size_t i = 0; i < this->_signalSize; ++i )
-                this->_signal.push_back( rhs._signal[i] );
+            copyVec(rhs);
+        }
+
+        OscSignal( OscSignal& rhs )
+        {
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            copyVec(rhs);
         }
 
         OscSignal& operator=( const OscSignal& rhs )
+        {    
+            // разработчик должен быть готов к таком, что-то не работало. пошел на радикальный шаг
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            copyVec(rhs);
+            return *this;
+        }
+
+        OscSignal& operator=( OscSignal& rhs )
         {
-            if( &rhs != this )
-            {
-                this->_sampleRate = rhs._sampleRate;
-                this->_inputLevel = rhs._inputLevel;
-                this->_signalSize = rhs._signalSize;
-                for( size_t i = 0; i < this->_signalSize; ++i )
-                    this->_signal.push_back( rhs._signal[i] );
-            }
+            // разработчик должен быть готов к таком, что-то не работало. пошел на радикальный шаг
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            copyVec(rhs);
+            return *this;
+        }
+
+        OscSignal( OscSignal&& rhs )
+        {
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            copyVec(rhs);
+        }
+        
+        OscSignal& operator=( OscSignal&& rhs )
+        {
+            // разработчик должен быть готов к таком, что-то не работало. пошел на радикальный шаг
+            this->_sampleRate = rhs._sampleRate;
+            this->_inputLevel = rhs._inputLevel;
+            copyVec(rhs);
             return *this;
         }
 
@@ -148,6 +174,16 @@ namespace oscilloscopes
         {
             if( !_signal.empty() )
                 _signal.clear();
+        }
+
+    private:
+        void copyVec( const OscSignal& it )
+        {
+            this->_signal.resize(0);
+            this->_signal.resize( it._signalSize, 0 );
+            this->_signalSize = it._signalSize;
+            for( size_t i = 0; i < it._signalSize; ++i )
+                this->_signal[i] = it._signal[i];
         }
     };
 

@@ -393,11 +393,11 @@ oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( co
     userWantReadFrameSignal = false;
 
     uint8_t *data_temp = data;
-    std::vector<int8_t> signalCh0, signalCh1;
+    std::vector<int> signalCh0, signalCh1;
     for( size_t i = 0; i < FS; ++i )
     {
-        signalCh0.push_back( static_cast<int8_t>( ( *data_temp++ ) - 127 ) );
-        signalCh1.push_back( static_cast<int8_t>( ( *data_temp++ ) - 127 ) );
+        signalCh0.push_back( static_cast<int>( ( *data_temp++ ) - 127 ) );
+        signalCh1.push_back( static_cast<int>( ( *data_temp++ ) - 127 ) );
     }
     delete []data;
 
@@ -442,7 +442,7 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
 
     bool isTriggerSuccess = true;
     bool lastRead = true;
-    std::vector<int8_t> signal;
+    std::vector<int> signal;
 
     while( ( ( isTriggerSuccess || lastRead ) && ( triggerMustWork ) ) )
     {
@@ -483,11 +483,11 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
         if( CHx == 1 )
             data_temp++;
 
-        int8_t intLevel = static_cast<int8_t>( level * 25.0 );
-        int8_t buffer = 0;
+        int intLevel = static_cast<int>( level * 25.0 );
+        int buffer = 0;
         for( size_t i = 0; i < DATA_SIZE; ++i )
         {
-            signal.push_back( static_cast<int8_t>( ( *data_temp ) - 127 ) );
+            signal.push_back( static_cast<int>( ( *data_temp ) - 127 ) );
             data_temp += 2;
             if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
             {
