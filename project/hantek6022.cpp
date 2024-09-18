@@ -417,7 +417,7 @@ const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame
 }
 
 oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
-        const float& level, const uint8_t& comp )
+        const int& level, const int& comp )
 {
     size_t inputLevel = 0;
     {
@@ -491,7 +491,7 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
             data_temp += 2;
             if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
             {
-                if( ( ( signal.back() >= intLevel ) && ( comp == 1 ) ) )
+                if( ( ( signal.back() >= intLevel ) && ( comp == 1 ) ) )  // Надо заменить на bool
                 {
                     isTriggerSuccess = false;
                     eraseSize = signal.size();

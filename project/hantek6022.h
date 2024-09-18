@@ -217,7 +217,7 @@ namespace oscilloscopes
              *  @param comp  - 1 - возврастающий
              *                 2 - убывающий
              * */
-            OscSignal getSignalFromTrigger( const uint8_t& CHx, const float& level, const uint8_t& comp ) override;
+            OscSignal getSignalFromTrigger( const uint8_t& CHx, const int& level, const int& comp ) override;
 
             /** @brief onTrigger - включить триггер
              * */
