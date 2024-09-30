@@ -3,6 +3,8 @@
 
 #include "oscilloscopes.h"
 
+#include <cassert>
+
 #include <libusb-1.0/libusb.h>
 
 namespace oscilloscopes

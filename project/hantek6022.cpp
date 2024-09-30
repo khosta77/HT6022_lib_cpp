@@ -416,10 +416,75 @@ const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame
     return rangeSignalFrame;
 }
 
+#if 0
+static void writeSignalToFile( const std::vector<int>& sFrame, const std::string& fn = "signalNew.txt" )
+{
+    std::fstream fout( fn.c_str(), ( std::ios::out | std::ios::trunc | std::ios::binary ) );
+    assert( fout.is_open() );
+    for( const int& it : sFrame )
+        fout << it << std::endl;
+    fout.close();
+}
+#endif
+
+static bool signalFind( const std::vector<int>& signal, const int& level, bool up )
+{
+    const int STEP = 128;
+    std::vector<int> trigFindActivate(signal.size());
+
+    int step = STEP;
+    int i = STEP;
+    int prev = signal[i];
+    for( i += step; i < signal.size(); i += step )
+    {
+        if( ( up and ( signal[i] >= level && prev < level ) ) )  // При переходе вверх
+        {
+            if( step == 1 )
+            {
+                trigFindActivate[i] = 200;
+                step = STEP;
+                up = false;
+                std::cout << "break up i: " << i << std::endl;
+                break;
+                // continue;  // infinit find
+            }
+
+            i -= step;
+            step /= 2;
+        }
+        else if( ( !up and ( signal[i] <= level && prev > level ) ) )  // При переходе вниз
+        {
+            if( step == 1 )
+            {
+                //std::cout << sFrame[i] << ' ' << level << std::endl;
+                trigFindActivate[i] = 200;
+                step = STEP;
+                up = true;
+                std::cout << "break down i: " << i << std::endl;
+                break;
+                //return true;
+                //continue;  // infinit find
+            }
+
+            i -= step;
+            step /= 2;
+        }
+
+        if( i < 0 )
+            i = 0;
+
+        prev = signal[i];
+    }
+
+    //std::cout << i << ' ' << signal.size() << std::endl;
+    //writeSignalToFile(signal, "signal.txt");
+    //writeSignalToFile(trigFindActivate);
+    return ( ( i == signal.size() ) ? false : true );
+}
+
 oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
         const int& level, const int& comp )
 {
-    //std::cout << ">" << ((int)CHx) << ' ' << level << 
     size_t inputLevel = 0;
     {
         std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
@@ -429,27 +494,11 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
             inputLevel = _oscSignal[CHx]._inputLevel;
         }
     }
-
-    //THROW( ( ( ( CHx != 0 ) && ( CHx != 2 ) ) || ( checkLevel( level, inputLevel ) )
-    //            || ( ( comp != 1 ) && ( comp != 2 ) ) ), "getSignalFromTrigger" );
-
-
     const size_t DATA_SIZE = _16KB;
-    const size_t STEP = 512;
-
-    // Размер буфера, который дополнительно сохраняем после срабатывания программного триггера
-    const size_t BUFFER_SIGNAL_SIZE = 1000;
-    size_t eraseSize = 0;  // длина удаляемого хвоста сигнал
-
-    bool isTriggerSuccess = true;
-    bool lastRead = true;
     std::vector<int> signal;
-
-    while( ( ( isTriggerSuccess || lastRead ) && ( triggerMustWork ) ) )
+    while( triggerMustWork )
     {
-        if( !isTriggerSuccess )
-            lastRead = false;
-
+ 
         uint8_t *data = new uint8_t[( sizeof(uint8_t) * DATA_SIZE * 2 )];
         *data = HT6022_READ_CONTROL_DATA;
 
@@ -486,46 +535,17 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
 
         int intLevel = static_cast<int>( level );
         int buffer = 0;
+        signal.clear();
         for( size_t i = 0; i < DATA_SIZE; ++i )
         {
-            signal.push_back( static_cast<int>( ( *data_temp ) - 127 ) );
+            signal.push_back( static_cast<int>( ( *data_temp ) ) );
             data_temp += 2;
-            if( ( ( i % STEP == 0 ) && isTriggerSuccess ) )
-            {
-                if( ( ( signal.back() >= intLevel ) && ( comp == 1 ) ) )  // Надо заменить на bool
-                {
-                    isTriggerSuccess = false;
-                    eraseSize = signal.size();
-                }
-        
-                if( ( ( signal.back() >= intLevel ) && ( comp == 2 ) ) )
-                    buffer = signal.back();
-                
-                if( ( ( signal.back() <= intLevel ) && ( comp == 2 ) && ( buffer >= intLevel ) ) )
-                {
-                    isTriggerSuccess = false;
-                    eraseSize = signal.size();
-                }
-            }
         }
-
-        if( isTriggerSuccess )
-        {
-            if( signal.size() > _1MB )
-                signal.clear();
-        }
-
         delete []data;
-    }
 
-    if( !triggerMustWork )
-    {
-        OscSignal oscSig = oscilloscopes::OscSignal();
-        return oscSig;
+        if( signalFind( signal, intLevel, ( ( comp == 1 ) ? true : false ) ) )
+            break;
     }
-
-    eraseSize -= ( ( eraseSize > BUFFER_SIGNAL_SIZE ) ? BUFFER_SIGNAL_SIZE : eraseSize );
-    signal.erase( signal.begin(), signal.begin() + eraseSize );
 
     std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
     std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
