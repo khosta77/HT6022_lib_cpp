@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <iomanip>
 #include <thread>
-#include <cassert>
 #include <atomic>
 
 using namespace oscilloscopes::hantek;
@@ -25,7 +24,9 @@ void readSignalToFile( const std::string& fn = "signal.txt" )
 
 int main()
 {
-    readSignalToFile();
+    //readSignalToFile();
+    oscilloscope.onTrigger();
+    oscilloscope.getSignalFromTrigger(0, 150, 2);
     return 0;
 }
 
