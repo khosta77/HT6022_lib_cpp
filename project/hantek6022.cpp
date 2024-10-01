@@ -483,7 +483,7 @@ static bool signalFind( const std::vector<int>& signal, const int& level, bool u
 }
 
 oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
-        const int& level, const int& comp )
+        const int& level, const int& comp, const size_t& DATA_SIZE = _16KB )
 {
     size_t inputLevel = 0;
     {
@@ -494,7 +494,7 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
             inputLevel = _oscSignal[CHx]._inputLevel;
         }
     }
-    const size_t DATA_SIZE = _16KB;
+    //const size_t DATA_SIZE = _16KB;
     std::vector<int> signal;
     while( triggerMustWork )
     {

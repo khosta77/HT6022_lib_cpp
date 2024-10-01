@@ -26,7 +26,7 @@ int main()
 {
     //readSignalToFile();
     oscilloscope.onTrigger();
-    oscilloscope.getSignalFromTrigger(0, 150, 2);
+    oscilloscope.getSignalFromTrigger(0, 150, 2, HT6022::_1KB);
     return 0;
 }
 
