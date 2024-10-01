@@ -396,8 +396,8 @@ oscilloscopes::OscSigframe oscilloscopes::hantek::Hantek6022::getSignalFrame( co
     std::vector<int> signalCh0, signalCh1;
     for( size_t i = 0; i < FS; ++i )
     {
-        signalCh0.push_back( static_cast<int>( ( *data_temp++ ) - 127 ) );
-        signalCh1.push_back( static_cast<int>( ( *data_temp++ ) - 127 ) );
+        signalCh0.push_back( static_cast<int>( ( *data_temp++ ) ) );
+        signalCh1.push_back( static_cast<int>( ( *data_temp++ ) ) );
     }
     delete []data;
 
@@ -416,7 +416,7 @@ const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame
     return rangeSignalFrame;
 }
 
-#if 0
+#if 1
 static void writeSignalToFile( const std::vector<int>& sFrame, const std::string& fn = "signalNew.txt" )
 {
     std::fstream fout( fn.c_str(), ( std::ios::out | std::ios::trunc | std::ios::binary ) );
@@ -429,7 +429,7 @@ static void writeSignalToFile( const std::vector<int>& sFrame, const std::string
 
 static bool signalFind( const std::vector<int>& signal, const int& level, bool up )
 {
-    const int STEP = 128;
+    const int STEP = 64;
     std::vector<int> trigFindActivate(signal.size());
 
     int step = STEP;
@@ -444,7 +444,7 @@ static bool signalFind( const std::vector<int>& signal, const int& level, bool u
                 trigFindActivate[i] = 200;
                 step = STEP;
                 up = false;
-                std::cout << "break up i: " << i << std::endl;
+                //std::cout << "break up i: " << i << std::endl;
                 break;
                 // continue;  // infinit find
             }
@@ -460,7 +460,7 @@ static bool signalFind( const std::vector<int>& signal, const int& level, bool u
                 trigFindActivate[i] = 200;
                 step = STEP;
                 up = true;
-                std::cout << "break down i: " << i << std::endl;
+                //std::cout << "break down i: " << i << std::endl;
                 break;
                 //return true;
                 //continue;  // infinit find
@@ -476,9 +476,9 @@ static bool signalFind( const std::vector<int>& signal, const int& level, bool u
         prev = signal[i];
     }
 
-    //std::cout << i << ' ' << signal.size() << std::endl;
-    //writeSignalToFile(signal, "signal.txt");
-    //writeSignalToFile(trigFindActivate);
+    std::cout << i << ' ' << signal.size() << std::endl;
+    writeSignalToFile(signal, "signal.txt");
+    writeSignalToFile(trigFindActivate);
     return ( ( i == signal.size() ) ? false : true );
 }
 

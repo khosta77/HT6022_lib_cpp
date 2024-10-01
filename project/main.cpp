@@ -9,11 +9,11 @@ using HT6022 = oscilloscopes::hantek::Hantek6022;
 using oscilloscopes::OscSigframe;
 using oscilloscopes::OscSignal;
 
-Hantek6022 oscilloscope( 8'000, 1, 1 );
+Hantek6022 oscilloscope( 100, 5, 1 );
 
 void readSignalToFile( const std::string& fn = "signal.txt" )
 {
-    std::vector<int> signal = oscilloscope.getSignalFrame( HT6022::_16KB )[0]._signal;
+    std::vector<int> signal = oscilloscope.getSignalFrame( HT6022::_2KB )[0]._signal;
     std::fstream fout( fn.c_str(), ( std::ios::out | std::ios::trunc | std::ios::binary ) );
     assert( fout.is_open() );
     for( const int& it : signal )
@@ -26,7 +26,8 @@ int main()
 {
     //readSignalToFile();
     oscilloscope.onTrigger();
-    oscilloscope.getSignalFromTrigger(0, 150, 2, HT6022::_1KB);
+    //readSignalToFile();
+    oscilloscope.getSignalFromTrigger(0, 140, 2, HT6022::_1KB);
     return 0;
 }
 
