@@ -47,6 +47,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
+
+# Add support for GDB
+#SET(CMAKE_BUILD_TYPE "Debug")
+SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -Wall -g")
+#SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3")
+
 # Добавление исполняемого файла с именем main.out
 add_executable(
     main.out
