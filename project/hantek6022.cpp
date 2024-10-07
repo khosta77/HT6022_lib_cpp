@@ -1,6 +1,9 @@
 #include "hantek6022.h"
 #include "ht6022lib.h"
 
+#include <chrono>
+#include <iomanip>
+
 static const std::vector<size_t> rangeSampleRate = std::vector<size_t>{ 100, 200, 500, 1'000, 4'000, 8'000, 16'000, 24'000 };
 
 static const std::vector<size_t> rangeInputLevel = std::vector<size_t>{ 1, 2, 5, 10 };
@@ -195,6 +198,8 @@ void oscilloscopes::hantek::Hantek6022::init( const size_t& SR, const size_t& IL
     setSampleRate(SR);
     setInputLevel( 0, IL1 );
     setInputLevel( 1, IL2 );
+
+    _lastItem = 0;
 }
 
 void oscilloscopes::hantek::Hantek6022::close()
@@ -416,93 +421,63 @@ const std::vector<size_t> oscilloscopes::hantek::Hantek6022::getRangeSignalFrame
     return rangeSignalFrame;
 }
 
-#if 1
-static void writeSignalToFile( const std::vector<int>& sFrame, const std::string& fn = "signalNew.txt" )
+static std::vector<size_t> huntingSignal( const std::vector<int>& sFrame, const int& level, bool up )
 {
-    std::fstream fout( fn.c_str(), ( std::ios::out | std::ios::trunc | std::ios::binary ) );
-    assert( fout.is_open() );
-    for( const int& it : sFrame )
-        fout << it << std::endl;
-    fout.close();
-}
-#endif
+    static const size_t STEP = 32;
+    std::vector<size_t> trigFindActivate;
 
-static bool signalFind( const std::vector<int>& signal, const int& level, bool up )
-{
-    const int STEP = 64;
-    std::vector<int> trigFindActivate(signal.size());
-
-    int step = STEP;
-    int i = STEP;
-    int prev = signal[i];
-    for( i += step; i < signal.size(); i += step )
+    size_t step = STEP;
+    int prev = sFrame[STEP];
+    for( size_t i = ( 2 * STEP ), I = sFrame.size(); i < I; i += step )
     {
-        if( ( up and ( signal[i] >= level && prev < level ) ) )  // При переходе вверх
+        if( ( up and ( sFrame[i] >= level && prev < level ) ) )  // При переходе вверх
         {
             if( step == 1 )
             {
-                trigFindActivate[i] = 200;
-                step = STEP;
-                up = false;
-                //std::cout << "break up i: " << i << std::endl;
-                break;
-                // continue;  // infinit find
+                trigFindActivate.push_back(i); step = STEP;
+                continue;
             }
-
             i -= step;
             step /= 2;
         }
-        else if( ( !up and ( signal[i] <= level && prev > level ) ) )  // При переходе вниз
+        else if( ( !up and ( sFrame[i] <= level && prev > level ) ) )  // При переходе вниз
         {
             if( step == 1 )
             {
-                //std::cout << sFrame[i] << ' ' << level << std::endl;
-                trigFindActivate[i] = 200;
-                step = STEP;
-                up = true;
-                //std::cout << "break down i: " << i << std::endl;
-                break;
-                //return true;
-                //continue;  // infinit find
+                trigFindActivate.push_back(i); step = STEP;
+                continue;
             }
-
             i -= step;
             step /= 2;
         }
 
-        if( i < 0 )
-            i = 0;
-
-        prev = signal[i];
+        prev = sFrame[i];
     }
 
-    std::cout << i << ' ' << signal.size() << std::endl;
-    writeSignalToFile(signal, "signal.txt");
-    writeSignalToFile(trigFindActivate);
-    return ( ( i == signal.size() ) ? false : true );
+    return trigFindActivate;
 }
 
-oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
-        const int& level, const int& comp, const size_t& DATA_SIZE = _16KB )
+void oscilloscopes::hantek::Hantek6022::getSignalFromTrigger( const uint8_t& CHx,
+        const int& level, const int& comp, const size_t& DATA_SIZE = _1KB )
 {
-    size_t inputLevel = 0;
-    {
-        std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
-        {
-            std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
+    const size_t PTR_DATA_SIZE = _16KB;
+    const size_t PTR_SIZE = ( PTR_DATA_SIZE * 2 );
+    const size_t MESSAGE_RANGE = ( DATA_SIZE / 2 );
+    const size_t PTR_MAX_SMALL_SIZE = ( PTR_DATA_SIZE - MESSAGE_RANGE - 1 );
+    const int intLevel = static_cast<int>( level );
 
-            inputLevel = _oscSignal[CHx]._inputLevel;
-        }
-    }
-    //const size_t DATA_SIZE = _16KB;
+    std::vector<int> signalToSave(DATA_SIZE);
     std::vector<int> signal;
+    
+    std::vector<double> readValues;
+    std::vector<double> findValues;
+
     while( triggerMustWork )
     {
  
-        uint8_t *data = new uint8_t[( sizeof(uint8_t) * DATA_SIZE * 2 )];
+        uint8_t *data = new uint8_t[PTR_SIZE];
         *data = HT6022_READ_CONTROL_DATA;
 
-        int r = 0;
         int nread;
 
         if( userWantReadFrameSignal )
@@ -513,47 +488,65 @@ oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getSignalFromTrigger
             {
                 std::lock_guard<std::mutex> guard2( _usb_device, std::adopt_lock );
 
-                THROW( ( ( _device._handle == nullptr ) ), "getSignalFromTrigger" );
-                r = libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
-                                             HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
-                                             HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
+                libusb_control_transfer( _device._handle, HT6022_READ_CONTROL_REQUEST_TYPE,
+                                         HT6022_READ_CONTROL_REQUEST, HT6022_READ_CONTROL_VALUE,
+                                         HT6022_READ_CONTROL_INDEX, data, HT6022_READ_CONTROL_SIZE, 0 );
 
-                THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFromTrigger", data );
-
-                r = libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data,
-                                          ( DATA_SIZE * 2 ), &nread, 0 ); 
-
-                THROW( ( ( r >= 0 ) ? 0 : r), "getSignalFromTrigger", data );
-                THROW( ( ( nread != ( DATA_SIZE * 2 ) ) ? -1 : 0 ), "getSignalFromTrigger", data );
+                libusb_bulk_transfer( _device._handle, HT6022_READ_BULK_PIPE, data, PTR_SIZE, &nread, 0 ); 
             }
         }
+
 
         uint8_t *data_temp = data;
 
         if( CHx == 1 )
             data_temp++;
 
-        int intLevel = static_cast<int>( level );
-        int buffer = 0;
         signal.clear();
-        for( size_t i = 0; i < DATA_SIZE; ++i )
-        {
-            signal.push_back( static_cast<int>( ( *data_temp ) ) );
-            data_temp += 2;
-        }
+        signal.resize( PTR_DATA_SIZE );
+        for( size_t i = 0; i < PTR_DATA_SIZE; ++i, data_temp += 2 )
+            signal[i] = static_cast<int>( *data_temp );
         delete []data;
 
-        if( signalFind( signal, intLevel, ( ( comp == 1 ) ? true : false ) ) )
-            break;
+        auto result = huntingSignal( signal, intLevel, ( ( comp == 1 ) ? true : false ) );
+
+        for( const size_t& it : result )
+        {
+            if( it < MESSAGE_RANGE or it > PTR_MAX_SMALL_SIZE )
+                continue;
+
+            signalToSave.clear();
+            signalToSave.resize( DATA_SIZE );
+            
+            for( size_t i = ( it - MESSAGE_RANGE ), I = ( it + MESSAGE_RANGE ), j = 0; i < I; ++i, ++j )
+                signalToSave[j] = signal[i];
+
+            OscSignal oscSignal;
+            oscSignal._signal = signalToSave;
+            oscSignal._signalSize = signalToSave.size();
+            //
+            //
+
+            _deqOscSignal.push_back( oscSignal );
+            if( _deqOscSignal.size() == MAX_DEQUE_SIZE )
+                _deqOscSignal.pop_front();
+        }
     }
+    // TODO: clear
+}
 
-    std::lock_guard<std::mutex> guard1( _oscSignal_save, std::adopt_lock );
-    std::lock_guard<std::mutex> guard2( _oscSignal_osc, std::adopt_lock );
-    std::lock( _oscSignal_save, _oscSignal_osc );
+oscilloscopes::OscSignal oscilloscopes::hantek::Hantek6022::getLastSignalFromTrigger()
+{
+    while( _deqOscSignal.empty() ) {}
+    auto buffer = _deqOscSignal.back();
+    return buffer;
+}
 
-    _oscSignal[CHx]._signal = signal;
-    _oscSignal[CHx]._signalSize = _oscSignal[CHx]._signal.size();
-    return _oscSignal[CHx];
+void oscilloscopes::hantek::Hantek6022::clearDeq()
+{
+    offTrigger(); 
+    std::this_thread::sleep_for( std::chrono::nanoseconds(5'000'000) );
+    _deqOscSignal.clear();
 }
 
 const void oscilloscopes::hantek::Hantek6022::onTrigger()

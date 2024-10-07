@@ -4,6 +4,7 @@
 #include "oscilloscopes.h"
 
 #include <cassert>
+#include <deque>
 
 #include <libusb-1.0/libusb.h>
 
@@ -66,6 +67,11 @@ namespace oscilloscopes
             std::mutex _oscSignal_save;
             std::mutex _oscSignal_osc;
             OscSigframe _oscSignal;
+
+
+            const size_t MAX_DEQUE_SIZE = 100;
+            std::deque<OscSignal> _deqOscSignal;
+            std::atomic<size_t> _lastItem;
 
             std::atomic<bool> triggerMustWork;
             std::atomic<bool> userWantReadFrameSignal;
@@ -219,9 +225,12 @@ namespace oscilloscopes
              *  @param comp  - 1 - возврастающий
              *                 2 - убывающий
              * */
-            OscSignal getSignalFromTrigger( const uint8_t& CHx, const int& level, const int& comp,
-                                            const size_t& ) override;
+            void getSignalFromTrigger( const uint8_t& CHx, const int& level, const int& comp,
+                                       const size_t& ) override;
 
+            OscSignal getLastSignalFromTrigger() override;
+
+            void clearDeq() override;
             /** @brief onTrigger - включить триггер
              * */
             const void onTrigger() override;
