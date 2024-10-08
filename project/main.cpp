@@ -10,7 +10,7 @@ using HT6022 = oscilloscopes::hantek::Hantek6022;
 using oscilloscopes::OscSigframe;
 using oscilloscopes::OscSignal;
 
-Hantek6022 oscilloscope( 200, 5, 1 );
+Hantek6022 oscilloscope( 100, 1, 1 );
 
 void saveSignalToFile( const std::string& fn = "signal.txt" )
 {
@@ -55,9 +55,13 @@ void displayProgressBar(int currentIteration, int maxIterations)
 
 int main()
 {
+#if 0
+    auto sig = oscilloscope.getSignalFrame(HT6022::_1MB)[0];
+    saveSignal(sig, 0);
+#else
     oscilloscope.onTrigger();
     std::thread t1( &oscilloscopes::hantek::Hantek6022::getSignalFromTrigger,
-                    &oscilloscope, 0, 140, 2, HT6022::_2KB );
+                    &oscilloscope, 0, 136, 1, HT6022::_2KB );
     for( size_t i = 0, I = 1; i < I; ++i )
     {
         displayProgressBar( i, I );
@@ -66,6 +70,7 @@ int main()
     }
     oscilloscope.offTrigger();
     t1.join();
+#endif
     return 0;
 }
 
